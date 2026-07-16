@@ -1,0 +1,638 @@
+     1→'use client'
+     2→
+     3→import { useState } from 'react'
+     4→import { useRouter, RouteName } from '@/lib/router'
+     5→import { DashboardShell, SidebarGroup } from '@/components/layout/dashboard-shell'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Card } from '@/components/ui/card'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { Input } from '@/components/ui/input'
+    10→import { Label } from '@/components/ui/label'
+    11→import { Separator } from '@/components/ui/separator'
+    12→import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import {
+    15→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+    16→} from '@/components/ui/dialog'
+    17→import { useStore } from '@/lib/store'
+    18→import { EVENTS, UPCOMING_BOOKINGS, PAST_BOOKINGS, formatCurrency, formatDate } from '@/lib/mock-data'
+    19→import {
+    20→  LayoutDashboard, Ticket, FileText, LifeBuoy, User, LogOut, Bell,
+    21→  Calendar, TrendingUp, CreditCard, CheckCircle2, Clock, ArrowRight,
+    22→  ChevronRight, Star, Heart, MapPin, Mail, Globe, Save, MessageSquare,
+    23→  AlertCircle, Download, ShoppingBag
+    24→} from 'lucide-react'
+    25→import { motion, AnimatePresence } from 'framer-motion'
+    26→
+    27→const groups: SidebarGroup[] = [
+    28→  {
+    29→    items: [
+    30→      { label: 'Dashboard', route: 'customer-dashboard', icon: LayoutDashboard },
+    31→      { label: 'My Bookings', route: 'customer-dashboard', icon: Ticket },
+    32→      { label: 'Invoices', route: 'customer-dashboard', icon: FileText },
+    33→      { label: 'Wishlist', route: 'customer-dashboard', icon: Heart },
+    34→    ],
+    35→  },
+    36→  {
+    37→    label: 'Account',
+    38→    items: [
+    39→      { label: 'Support', route: 'customer-dashboard', icon: LifeBuoy },
+    40→      { label: 'Profile', route: 'customer-dashboard', icon: User },
+    41→      { label: 'Logout', route: 'home', icon: LogOut },
+    42→    ],
+    43→  },
+    44→]
+    45→
+    46→export function CustomerDashboardPage() {
+    47→  const { navigate, route } = useRouter()
+    48→  const { user, wishlist, toggleWishlist, logout, addToast } = useStore()
+    49→  const initialTab = (route.params?.tab as string) || 'dashboard'
+    50→  const [activeTab, setActiveTab] = useState(initialTab)
+    51→  const [profileOpen, setProfileOpen] = useState(false)
+    52→  const [profile, setProfile] = useState({
+    53→    name: user?.name || 'James Whitmore',
+    54→    email: user?.email || 'james.whitmore@example.com',
+    55→    phone: '+44 20 7946 0958',
+    56→    country: 'United Kingdom',
+    57→    city: 'London',
+    58→    address: '42 Mayfair Lane, London W1K 5AB',
+    59→  })
+    60→
+    61→  // If not logged in, prompt to login
+    62→  if (!user) {
+    63→    return (
+    64→      <div className="grid min-h-screen place-items-center bg-muted/30 p-4">
+    65→        <Card className="max-w-md p-8 text-center">
+    66→          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-500/15">
+    67→            <User className="h-8 w-8 text-amber-600" />
+    68→          </div>
+    69→          <h2 className="mt-4 text-2xl font-bold tracking-tight">Sign in required</h2>
+    70→          <p className="mt-2 text-sm text-muted-foreground">
+    71→            Please sign in to access your customer dashboard, view bookings, manage your wishlist, and update your profile.
+    72→          </p>
+    73→          <div className="mt-6 flex gap-3">
+    74→            <Button variant="outline" className="flex-1" onClick={() => navigate('home')}>Return Home</Button>
+    75→            <Button className="flex-1 gap-2" onClick={() => navigate('login')}>
+    76→              Sign in
+    77→              <ArrowRight className="h-4 w-4" />
+    78→            </Button>
+    79→          </div>
+    80→          <p className="mt-4 text-xs text-muted-foreground">
+    81→            New here?{' '}
+    82→            <button onClick={() => navigate('register')} className="font-medium text-foreground hover:underline">
+    83→              Create an account
+    84→            </button>
+    85→          </p>
+    86→        </Card>
+    87→      </div>
+    88→    )
+    89→  }
+    90→
+    91→  const wishlistEvents = EVENTS.filter(e => wishlist.includes(e.id))
+    92→
+    93→  const handleLogout = () => {
+    94→    logout()
+    95→    navigate('home')
+    96→  }
+    97→
+    98→  const saveProfile = (e: React.FormEvent) => {
+    99→    e.preventDefault()
+   100→    addToast({ title: 'Profile updated', description: 'Your changes have been saved', type: 'success' })
+   101→    setProfileOpen(false)
+   102→  }
+   103→
+   104→  return (
+   105→    <DashboardShell
+   106→      brand="DS Experiences"
+   107→      brandSubtitle="Customer Portal"
+   108→      groups={groups}
+   109→      currentRoute="customer-dashboard"
+   110→      onNavigate={(r: RouteName) => {
+   111→        if (r === 'home') handleLogout()
+   112→        else navigate(r)
+   113→      }}
+   114→      onExit={() => navigate('home')}
+   115→      topBarTitle="My Dashboard"
+   116→      topBarRight={
+   117→        <>
+   118→          <Button variant="ghost" size="icon" className="relative">
+   119→            <Bell className="h-4 w-4" />
+   120→            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
+   121→          </Button>
+   122→          <Avatar className="h-8 w-8">
+   123→            <AvatarImage src={user.avatar} />
+   124→            <AvatarFallback>{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   125→          </Avatar>
+   126→        </>
+   127→      }
+   128→    >
+   129→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   130→        <TabsList className="mb-6 w-full justify-start overflow-x-auto">
+   131→          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+   132→          <TabsTrigger value="bookings">My Bookings</TabsTrigger>
+   133→          <TabsTrigger value="wishlist">Wishlist ({wishlist.length})</TabsTrigger>
+   134→          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+   135→          <TabsTrigger value="support">Support</TabsTrigger>
+   136→          <TabsTrigger value="profile">Profile</TabsTrigger>
+   137→        </TabsList>
+   138→
+   139→        {/* DASHBOARD TAB */}
+   140→        <TabsContent value="dashboard" className="space-y-6">
+   141→          {/* Welcome banner */}
+   142→          <motion.div
+   143→            initial={{ opacity: 0, y: 10 }}
+   144→            animate={{ opacity: 1, y: 0 }}
+   145→            className="flex flex-col items-start justify-between gap-4 rounded-xl bg-foreground p-6 text-background sm:flex-row sm:items-center"
+   146→          >
+   147→            <div className="flex items-center gap-4">
+   148→              <Avatar className="h-14 w-14 border-2 border-accent">
+   149→                <AvatarImage src={user.avatar} />
+   150→                <AvatarFallback>{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   151→              </Avatar>
+   152→              <div>
+   153→                <h2 className="text-xl font-semibold tracking-tight">Welcome back, {user.name.split(' ')[0]}</h2>
+   154→                <p className="text-sm text-background/70">You have 3 upcoming events and {user.membership || 'Gold'} membership status.</p>
+   155→              </div>
+   156→            </div>
+   157→            <div className="flex items-center gap-2 rounded-full bg-background/10 px-4 py-2 backdrop-blur-md">
+   158→              <Star className="h-4 w-4 fill-accent text-accent" />
+   159→              <span className="text-sm font-medium">{user.membership || 'Gold'} Member</span>
+   160→            </div>
+   161→          </motion.div>
+   162→
+   163→          {/* Stats cards */}
+   164→          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+   165→            {[
+   166→              { label: 'Upcoming Bookings', value: '3', icon: Calendar, accent: 'text-emerald-600', change: '+1 this month' },
+   167→              { label: 'Past Bookings', value: '14', icon: Ticket, accent: 'text-muted-foreground', change: '+2 last quarter' },
+   168→              { label: 'Total Spent', value: formatCurrency(18650), icon: CreditCard, accent: 'text-muted-foreground', change: 'Lifetime value' },
+   169→              { label: 'Loyalty Points', value: '1,842', icon: TrendingUp, accent: 'text-accent-foreground', change: '158 to next tier' },
+   170→            ].map((stat) => {
+   171→              const Icon = stat.icon
+   172→              return (
+   173→                <Card key={stat.label} className="p-5">
+   174→                  <div className="flex items-start justify-between">
+   175→                    <div>
+   176→                      <div className="text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</div>
+   177→                      <div className="mt-1 text-2xl font-bold">{stat.value}</div>
+   178→                      <div className="mt-1 text-xs text-muted-foreground">{stat.change}</div>
+   179→                    </div>
+   180→                    <div className="grid h-9 w-9 place-items-center rounded-md bg-muted">
+   181→                      <Icon className={`h-4 w-4 ${stat.accent}`} />
+   182→                    </div>
+   183→                  </div>
+   184→                </Card>
+   185→              )
+   186→            })}
+   187→          </div>
+   188→
+   189→          {/* Upcoming & Side */}
+   190→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   191→            <Card className="lg:col-span-2">
+   192→              <div className="flex items-center justify-between border-b border-border p-5">
+   193→                <h3 className="font-semibold">Upcoming Bookings</h3>
+   194→                <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => setActiveTab('bookings')}>
+   195→                  View all <ChevronRight className="h-3.5 w-3.5" />
+   196→                </Button>
+   197→              </div>
+   198→              <div className="divide-y divide-border">
+   199→                {UPCOMING_BOOKINGS.map((booking) => (
+   200→                  <div
+   201→                    key={booking.id}
+   202→                    className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-muted/30"
+   203→                    onClick={() => navigate('booking-details', { bookingId: booking.id })}
+   204→                  >
+   205→                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-accent/15">
+   206→                      <Calendar className="h-5 w-5 text-accent-foreground" />
+   207→                    </div>
+   208→                    <div className="flex-1 min-w-0">
+   209→                      <div className="flex items-center gap-2">
+   210→                        <h4 className="truncate font-medium">{booking.eventName}</h4>
+   211→                        {booking.status === 'Confirmed' ? (
+   212→                          <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">
+   213→                            <CheckCircle2 className="mr-1 h-3 w-3" />Confirmed
+   214→                          </Badge>
+   215→                        ) : (
+   216→                          <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
+   217→                            <Clock className="mr-1 h-3 w-3" />Pending
+   218→                          </Badge>
+   219→                        )}
+   220→                      </div>
+   221→                      <div className="mt-0.5 text-xs text-muted-foreground">
+   222→                        {booking.venue} · {formatDate(booking.eventDate)}
+   223→                      </div>
+   224→                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+   225→                        <span>{booking.tier} × {booking.qty}</span>
+   226→                        <span>·</span>
+   227→                        <span className="font-mono">{booking.id}</span>
+   228→                      </div>
+   229→                    </div>
+   230→                    <div className="text-right">
+   231→                      <div className="font-semibold">{formatCurrency(booking.amount, booking.currency)}</div>
+   232→                      <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs">
+   233→                        Details
+   234→                        <ArrowRight className="ml-1 h-3 w-3" />
+   235→                      </Button>
+   236→                    </div>
+   237→                  </div>
+   238→                ))}
+   239→              </div>
+   240→            </Card>
+   241→
+   242→            <div className="space-y-6">
+   243→              <Card className="p-5">
+   244→                <h3 className="mb-4 font-semibold">Ticket Status</h3>
+   245→                <div className="space-y-3">
+   246→                  {[
+   247→                    { label: 'E-tickets delivered', value: 2, color: 'bg-emerald-500' },
+   248→                    { label: 'Pending delivery', value: 1, color: 'bg-amber-500' },
+   249→                    { label: 'Hospitality pending', value: 1, color: 'bg-purple-500' },
+   250→                  ].map((s) => (
+   251→                    <div key={s.label}>
+   252→                      <div className="flex items-center justify-between text-xs">
+   253→                        <span className="text-muted-foreground">{s.label}</span>
+   254→                        <span className="font-medium">{s.value}</span>
+   255→                      </div>
+   256→                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+   257→                        <div className={`h-full ${s.color}`} style={{ width: `${(s.value / 4) * 100}%` }} />
+   258→                      </div>
+   259→                    </div>
+   260→                  ))}
+   261→                </div>
+   262→              </Card>
+   263→
+   264→              <Card className="p-5">
+   265→                <h3 className="mb-4 flex items-center gap-2 font-semibold">
+   266→                  <Bell className="h-4 w-4" />
+   267→                  Notifications
+   268→                </h3>
+   269→                <div className="space-y-3 text-sm">
+   270→                  <div className="rounded-lg border-l-2 border-emerald-500 bg-emerald-500/5 px-3 py-2">
+   271→                    <div className="text-xs font-medium">Your Coldplay tickets are ready</div>
+   272→                    <div className="mt-0.5 text-[10px] text-muted-foreground">2 hours ago</div>
+   273→                  </div>
+   274→                  <div className="rounded-lg border-l-2 border-accent bg-accent/5 px-3 py-2">
+   275→                    <div className="text-xs font-medium">Hospitality concierge assigned</div>
+   276→                    <div className="mt-0.5 text-[10px] text-muted-foreground">1 day ago</div>
+   277→                  </div>
+   278→                  <div className="rounded-lg border-l-2 border-muted-foreground bg-muted/30 px-3 py-2">
+   279→                    <div className="text-xs font-medium">Earn 158 more points for Platinum</div>
+   280→                    <div className="mt-0.5 text-[10px] text-muted-foreground">3 days ago</div>
+   281→                  </div>
+   282→                </div>
+   283→              </Card>
+   284→            </div>
+   285→          </div>
+   286→
+   287→          {/* Past bookings */}
+   288→          <Card>
+   289→            <div className="flex items-center justify-between border-b border-border p-5">
+   290→              <h3 className="font-semibold">Past Bookings</h3>
+   291→              <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => addToast({ title: 'History exported', description: 'Booking history CSV downloaded' })}>
+   292→                Export history <Download className="h-3.5 w-3.5" />
+   293→              </Button>
+   294→            </div>
+   295→            <div className="overflow-x-auto">
+   296→              <table className="w-full text-sm">
+   297→                <thead>
+   298→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   299→                    <th className="px-5 py-3 font-medium">Booking ID</th>
+   300→                    <th className="px-5 py-3 font-medium">Event</th>
+   301→                    <th className="px-5 py-3 font-medium">Date</th>
+   302→                    <th className="px-5 py-3 font-medium">Tier</th>
+   303→                    <th className="px-5 py-3 font-medium">Amount</th>
+   304→                    <th className="px-5 py-3 font-medium">Status</th>
+   305→                  </tr>
+   306→                </thead>
+   307→                <tbody className="divide-y divide-border">
+   308→                  {PAST_BOOKINGS.map((b) => (
+   309→                    <tr
+   310→                      key={b.id}
+   311→                      className="cursor-pointer transition-colors hover:bg-muted/30"
+   312→                      onClick={() => navigate('booking-details', { bookingId: b.id })}
+   313→                    >
+   314→                      <td className="px-5 py-3 font-mono text-xs">{b.id}</td>
+   315→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   316→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.eventDate)}</td>
+   317→                      <td className="px-5 py-3 text-muted-foreground">{b.tier} × {b.qty}</td>
+   318→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   319→                      <td className="px-5 py-3">
+   320→                        {b.status === 'Refunded' ? (
+   321→                          <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 hover:bg-rose-500/15">{b.status}</Badge>
+   322→                        ) : (
+   323→                          <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">{b.status}</Badge>
+   324→                        )}
+   325→                      </td>
+   326→                    </tr>
+   327→                  ))}
+   328→                </tbody>
+   329→              </table>
+   330→            </div>
+   331→          </Card>
+   332→        </TabsContent>
+   333→
+   334→        {/* BOOKINGS TAB */}
+   335→        <TabsContent value="bookings">
+   336→          <Card>
+   337→            <div className="border-b border-border p-5">
+   338→              <h3 className="font-semibold">All Bookings</h3>
+   339→              <p className="mt-1 text-xs text-muted-foreground">Your complete booking history</p>
+   340→            </div>
+   341→            <div className="overflow-x-auto">
+   342→              <table className="w-full text-sm">
+   343→                <thead>
+   344→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   345→                    <th className="px-5 py-3 font-medium">Booking ID</th>
+   346→                    <th className="px-5 py-3 font-medium">Event</th>
+   347→                    <th className="px-5 py-3 font-medium">Date</th>
+   348→                    <th className="px-5 py-3 font-medium">Tier</th>
+   349→                    <th className="px-5 py-3 font-medium">Amount</th>
+   350→                    <th className="px-5 py-3 font-medium">Status</th>
+   351→                    <th className="px-5 py-3 text-right">Actions</th>
+   352→                  </tr>
+   353→                </thead>
+   354→                <tbody className="divide-y divide-border">
+   355→                  {[...UPCOMING_BOOKINGS, ...PAST_BOOKINGS].map((b) => (
+   356→                    <tr key={b.id} className="cursor-pointer transition-colors hover:bg-muted/30" onClick={() => navigate('booking-details', { bookingId: b.id })}>
+   357→                      <td className="px-5 py-3 font-mono text-xs">{b.id}</td>
+   358→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   359→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.eventDate)}</td>
+   360→                      <td className="px-5 py-3 text-xs">{b.tier} × {b.qty}</td>
+   361→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   362→                      <td className="px-5 py-3">
+   363→                        <Badge variant="secondary" className={
+   364→                          b.status === 'Confirmed' ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15' :
+   365→                          b.status === 'Pending' ? 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/15' :
+   366→                          'bg-rose-500/15 text-rose-700 hover:bg-rose-500/15'
+   367→                        }>{b.status}</Badge>
+   368→                      </td>
+   369→                      <td className="px-5 py-3 text-right">
+   370→                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">View</Button>
+   371→                      </td>
+   372→                    </tr>
+   373→                  ))}
+   374→                </tbody>
+   375→              </table>
+   376→            </div>
+   377→          </Card>
+   378→        </TabsContent>
+   379→
+   380→        {/* WISHLIST TAB */}
+   381→        <TabsContent value="wishlist">
+   382→          {wishlistEvents.length === 0 ? (
+   383→            <Card className="grid place-items-center py-16 text-center">
+   384→              <Heart className="h-10 w-10 text-muted-foreground/50" />
+   385→              <p className="mt-3 text-sm text-muted-foreground">Your wishlist is empty.</p>
+   386→              <Button className="mt-3 gap-2" onClick={() => navigate('events')}>
+   387→                <ShoppingBag className="h-4 w-4" />
+   388→                Browse events
+   389→              </Button>
+   390→            </Card>
+   391→          ) : (
+   392→            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   393→              {wishlistEvents.map((event) => (
+   394→                <Card key={event.id} className="group overflow-hidden p-0">
+   395→                  <div className="relative aspect-[4/3] cursor-pointer overflow-hidden" onClick={() => navigate('event-detail', { eventId: event.id })}>
+   396→                    <img src={event.image} alt={event.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+   397→                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   398→                    <button
+   399→                      onClick={(e) => { e.stopPropagation(); toggleWishlist(event.id); addToast({ title: 'Removed from wishlist' }) }}
+   400→                      className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-background/90 backdrop-blur"
+   401→                    >
+   402→                      <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
+   403→                    </button>
+   404→                    <div className="absolute bottom-3 left-3 right-3 text-white">
+   405→                      <Badge className="bg-accent text-accent-foreground hover:bg-accent">{event.category}</Badge>
+   406→                      <div className="mt-1 text-sm font-semibold line-clamp-1">{event.name}</div>
+   407→                      <div className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />{event.city}</div>
+   408→                    </div>
+   409→                  </div>
+   410→                  <div className="p-4 flex items-center justify-between">
+   411→                    <div>
+   412→                      <div className="text-[10px] uppercase text-muted-foreground">From</div>
+   413→                      <div className="text-lg font-semibold">{formatCurrency(event.startingPrice, event.currency)}</div>
+   414→                    </div>
+   415→                    <Button size="sm" onClick={() => navigate('event-detail', { eventId: event.id })}>Book now</Button>
+   416→                  </div>
+   417→                </Card>
+   418→              ))}
+   419→            </div>
+   420→          )}
+   421→        </TabsContent>
+   422→
+   423→        {/* INVOICES TAB */}
+   424→        <TabsContent value="invoices">
+   425→          <Card>
+   426→            <div className="border-b border-border p-5">
+   427→              <h3 className="font-semibold">Invoices & Receipts</h3>
+   428→              <p className="mt-1 text-xs text-muted-foreground">Download invoices for your bookings</p>
+   429→            </div>
+   430→            <div className="overflow-x-auto">
+   431→              <table className="w-full text-sm">
+   432→                <thead>
+   433→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   434→                    <th className="px-5 py-3 font-medium">Invoice #</th>
+   435→                    <th className="px-5 py-3 font-medium">Booking</th>
+   436→                    <th className="px-5 py-3 font-medium">Date</th>
+   437→                    <th className="px-5 py-3 font-medium">Amount</th>
+   438→                    <th className="px-5 py-3 font-medium">Payment</th>
+   439→                    <th className="px-5 py-3 text-right">Actions</th>
+   440→                  </tr>
+   441→                </thead>
+   442→                <tbody className="divide-y divide-border">
+   443→                  {[...UPCOMING_BOOKINGS, ...PAST_BOOKINGS].map((b, i) => (
+   444→                    <tr key={b.id} className="transition-colors hover:bg-muted/30">
+   445→                      <td className="px-5 py-3 font-mono text-xs">INV-2026-{1000 + i}</td>
+   446→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   447→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.bookingDate)}</td>
+   448→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   449→                      <td className="px-5 py-3 text-xs">{b.paymentMethod}</td>
+   450→                      <td className="px-5 py-3 text-right">
+   451→                        <Button size="sm" variant="ghost" className="gap-1.5 h-7" onClick={() => addToast({ title: 'Invoice downloaded', description: `INV-2026-${1000 + i}.pdf` })}>
+   452→                          <Download className="h-3.5 w-3.5" />
+   453→                          PDF
+   454→                        </Button>
+   455→                      </td>
+   456→                    </tr>
+   457→                  ))}
+   458→                </tbody>
+   459→              </table>
+   460→            </div>
+   461→          </Card>
+   462→        </TabsContent>
+   463→
+   464→        {/* SUPPORT TAB */}
+   465→        <TabsContent value="support">
+   466→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   467→            <Card className="lg:col-span-2 p-6">
+   468→              <h3 className="flex items-center gap-2 font-semibold"><MessageSquare className="h-4 w-4" /> Submit a support request</h3>
+   469→              <p className="mt-1 text-xs text-muted-foreground">Our team typically responds within 4 hours during business days.</p>
+   470→              <Separator className="my-4" />
+   471→              <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); addToast({ title: 'Request submitted', description: 'Our team will be in touch shortly', type: 'success' }); (e.target as HTMLFormElement).reset() }}>
+   472→                <div>
+   473→                  <Label className="text-xs">Subject *</Label>
+   474→                  <Input required placeholder="Brief description of your issue" className="mt-1" />
+   475→                </div>
+   476→                <div>
+   477→                  <Label className="text-xs">Category</Label>
+   478→                  <select className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+   479→                    <option>Booking issue</option>
+   480→                    <option>Payment / Refund</option>
+   481→                    <option>Ticket delivery</option>
+   482→                    <option>Hospitality</option>
+   483→                    <option>Account / Login</option>
+   484→                    <option>Other</option>
+   485→                  </select>
+   486→                </div>
+   487→                <div>
+   488→                  <Label className="text-xs">Message *</Label>
+   489→                  <textarea required rows={5} placeholder="Tell us more about your issue…" className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+   490→                </div>
+   491→                <Button type="submit" className="gap-2">Submit request <ArrowRight className="h-4 w-4" /></Button>
+   492→              </form>
+   493→            </Card>
+   494→
+   495→            <div className="space-y-4">
+   496→              <Card className="p-5">
+   497→                <h3 className="mb-3 flex items-center gap-2 font-semibold"><LifeBuoy className="h-4 w-4" />Quick Help</h3>
+   498→                <div className="space-y-2">
+   499→                  {[
+   500→                    'How will I receive my tickets?',
+   501→                    'What is the cancellation policy?',
+   502→                    'Can I transfer my ticket?',
+   503→                    'How do I update my payment method?',
+   504→                    'How do loyalty points work?',
+   505→                  ].map(q => (
+   506→                    <button key={q} className="block w-full text-left text-xs text-muted-foreground hover:text-foreground hover:underline">
+   507→                      {q}
+   508→                    </button>
+   509→                  ))}
+   510→                </div>
+   511→              </Card>
+   512→
+   513→              <Card className="p-5">
+   514→                <h3 className="mb-2 font-semibold">Contact Concierge</h3>
+   515→                <p className="text-xs text-muted-foreground">Available 24/7 for {user.membership} members</p>
+   516→                <div className="mt-3 space-y-2 text-sm">
+   517→                  <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" />concierge@dstickets.com</div>
+   518→                  <div className="flex items-center gap-2"><Globe className="h-3.5 w-3.5 text-muted-foreground" />+44 20 7946 0958</div>
+   519→                </div>
+   520→              </Card>
+   521→            </div>
+   522→          </div>
+   523→        </TabsContent>
+   524→
+   525→        {/* PROFILE TAB */}
+   526→        <TabsContent value="profile">
+   527→          <Card className="p-6">
+   528→            <div className="flex items-center justify-between">
+   529→              <h3 className="text-lg font-semibold">My Profile</h3>
+   530→              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setProfileOpen(true)}>
+   531→                <Save className="h-3.5 w-3.5" /> Edit
+   532→              </Button>
+   533→            </div>
+   534→            <Separator className="my-4" />
+   535→            <div className="flex flex-col gap-6 sm:flex-row">
+   536→              <div className="flex flex-col items-center gap-2">
+   537→                <Avatar className="h-24 w-24">
+   538→                  <AvatarImage src={user.avatar} />
+   539→                  <AvatarFallback className="text-2xl">{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   540→                </Avatar>
+   541→                <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
+   542→                  <Star className="mr-1 h-3 w-3" />
+   543→                  {user.membership || 'Gold'}
+   544→                </Badge>
+   545→              </div>
+   546→              <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+   547→                <div>
+   548→                  <div className="text-xs text-muted-foreground">Full Name</div>
+   549→                  <div className="mt-1 font-medium">{profile.name}</div>
+   550→                </div>
+   551→                <div>
+   552→                  <div className="text-xs text-muted-foreground">Email</div>
+   553→                  <div className="mt-1 font-medium">{profile.email}</div>
+   554→                </div>
+   555→                <div>
+   556→                  <div className="text-xs text-muted-foreground">Phone</div>
+   557→                  <div className="mt-1 font-medium">{profile.phone}</div>
+   558→                </div>
+   559→                <div>
+   560→                  <div className="text-xs text-muted-foreground">Country</div>
+   561→                  <div className="mt-1 font-medium">{profile.country}</div>
+   562→                </div>
+   563→                <div>
+   564→                  <div className="text-xs text-muted-foreground">City</div>
+   565→                  <div className="mt-1 font-medium">{profile.city}</div>
+   566→                </div>
+   567→                <div className="sm:col-span-2">
+   568→                  <div className="text-xs text-muted-foreground">Address</div>
+   569→                  <div className="mt-1 font-medium">{profile.address}</div>
+   570→                </div>
+   571→              </div>
+   572→            </div>
+   573→
+   574→            <Separator className="my-6" />
+   575→
+   576→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+   577→              <div className="rounded-lg border border-border p-4 text-center">
+   578→                <div className="text-2xl font-bold">14</div>
+   579→                <div className="text-xs text-muted-foreground">Total Bookings</div>
+   580→              </div>
+   581→              <div className="rounded-lg border border-border p-4 text-center">
+   582→                <div className="text-2xl font-bold">{formatCurrency(18650)}</div>
+   583→                <div className="text-xs text-muted-foreground">Lifetime Spend</div>
+   584→              </div>
+   585→              <div className="rounded-lg border border-border p-4 text-center">
+   586→                <div className="text-2xl font-bold">1,842</div>
+   587→                <div className="text-xs text-muted-foreground">Loyalty Points</div>
+   588→              </div>
+   589→            </div>
+   590→          </Card>
+   591→        </TabsContent>
+   592→      </Tabs>
+   593→
+   594→      {/* Edit profile dialog */}
+   595→      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+   596→        <DialogContent>
+   597→          <DialogHeader>
+   598→            <DialogTitle>Edit Profile</DialogTitle>
+   599→            <DialogDescription>Update your personal information</DialogDescription>
+   600→          </DialogHeader>
+   601→          <form onSubmit={saveProfile} className="space-y-3">
+   602→            <div>
+   603→              <Label className="text-xs">Full Name</Label>
+   604→              <Input value={profile.name} onChange={(e) => setProfile(p => ({ ...p, name: e.target.value }))} className="mt-1" required />
+   605→            </div>
+   606→            <div>
+   607→              <Label className="text-xs">Email</Label>
+   608→              <Input type="email" value={profile.email} onChange={(e) => setProfile(p => ({ ...p, email: e.target.value }))} className="mt-1" required />
+   609→            </div>
+   610→            <div>
+   611→              <Label className="text-xs">Phone</Label>
+   612→              <Input value={profile.phone} onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))} className="mt-1" />
+   613→            </div>
+   614→            <div className="grid grid-cols-2 gap-3">
+   615→              <div>
+   616→                <Label className="text-xs">Country</Label>
+   617→                <Input value={profile.country} onChange={(e) => setProfile(p => ({ ...p, country: e.target.value }))} className="mt-1" />
+   618→              </div>
+   619→              <div>
+   620→                <Label className="text-xs">City</Label>
+   621→                <Input value={profile.city} onChange={(e) => setProfile(p => ({ ...p, city: e.target.value }))} className="mt-1" />
+   622→              </div>
+   623→            </div>
+   624→            <div>
+   625→              <Label className="text-xs">Address</Label>
+   626→              <Input value={profile.address} onChange={(e) => setProfile(p => ({ ...p, address: e.target.value }))} className="mt-1" />
+   627→            </div>
+   628→            <DialogFooter>
+   629→              <Button type="button" variant="outline" onClick={() => setProfileOpen(false)}>Cancel</Button>
+   630→              <Button type="submit" className="gap-2"><Save className="h-4 w-4" /> Save changes</Button>
+   631→            </DialogFooter>
+   632→          </form>
+   633→        </DialogContent>
+   634→      </Dialog>
+   635→    </DashboardShell>
+   636→  )
+   637→}
+   638→

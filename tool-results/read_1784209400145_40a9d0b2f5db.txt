@@ -1,0 +1,815 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState, useMemo, useEffect } from 'react'
+     4→     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→     5→import { Card } from '@/components/ui/card'
+     6→     6→import { Badge } from '@/components/ui/badge'
+     7→     7→import { Button } from '@/components/ui/button'
+     8→     8→import { Separator } from '@/components/ui/separator'
+     9→     9→import { useCurrencyFormatter } from '@/components/currency-switcher'
+    10→    10→import {
+    11→    11→  VenueLayout, VenueBlock, getVenueLayout, TIER_COLORS, VIEW_QUALITY_BADGE,
+    12→    12→} from '@/lib/venue-layouts'
+    13→    13→import { EventItem } from '@/lib/mock-data'
+    14→    14→import { cn } from '@/lib/utils'
+    15→    15→import {
+    16→    16→  Users, Check, X, ArrowRight, ShieldCheck, MapPin, Eye, ChevronRight,
+    17→    17→  Info, Ticket as TicketIcon, Armchair, Flag,
+    18→    18→} from 'lucide-react'
+    19→    19→
+    20→    20→export interface SelectedSeat {
+    21→    21→  blockId: string
+    22→    22→  blockName: string
+    23→    23→  blockCode: string
+    24→    24→  row: number
+    25→    25→  seat: number
+    26→    26→  price: number
+    27→    27→  currency: string
+    28→    28→}
+    29→    29→
+    30→    30→interface Props {
+    31→    31→  event: EventItem
+    32→    32→  onSelect?: (seats: SelectedSeat[]) => void
+    33→    33→  onContinue?: (seats: SelectedSeat[]) => void
+    34→    34→  maxSeats?: number
+    35→    35→}
+    36→    36→
+    37→    37→// ---------- Field renderers (venue-specific background) ----------
+    38→    38→
+    39→    39→function FootballField() {
+    40→    40→  // Green rectangular pitch with field markings, centered on the canvas
+    41→    41→  return (
+    42→    42→    <div className="absolute left-[28%] top-[36%] h-[28%] w-[44%] rounded border-2 border-emerald-700/40 bg-emerald-500/25">
+    43→    43→      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-700/30" />
+    44→    44→      <div className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-700/30" />
+    45→    45→      <div className="absolute left-0 top-1/2 h-14 w-px -translate-y-1/2 border-l border-emerald-700/30" />
+    46→    46→      <div className="absolute right-0 top-1/2 h-14 w-px -translate-y-1/2 border-l border-emerald-700/30" />
+    47→    47→      <div className="absolute bottom-0 left-1/2 h-7 w-14 -translate-x-1/2 border-x border-b border-emerald-700/30" />
+    48→    48→      <div className="absolute top-0 left-1/2 h-7 w-14 -translate-x-1/2 border-x border-t border-emerald-700/30" />
+    49→    49→    </div>
+    50→    50→  )
+    51→    51→}
+    52→    52→
+    53→    53→function CricketField() {
+    54→    54→  // Oval field with a central pitch strip
+    55→    55→  return (
+    56→    56→    <>
+    57→    57→      <div className="absolute left-1/2 top-1/2 h-[44%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-2 border-emerald-700/30 bg-emerald-500/20" />
+    58→    58→      <div className="absolute left-1/2 top-1/2 h-[34%] w-[40%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-emerald-700/20" />
+    59→    59→      <div className="absolute left-1/2 top-1/2 h-[18%] w-[6%] -translate-x-1/2 -translate-y-1/2 rounded bg-amber-200/50">
+    60→    60→        <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-amber-700/40" />
+    61→    61→      </div>
+    62→    62→    </>
+    63→    63→  )
+    64→    64→}
+    65→    65→
+    66→    66→function F1Circuit() {
+    67→    67→  // SVG race track loop with start/finish marker
+    68→    68→  return (
+    69→    69→    <svg
+    70→    70→      viewBox="0 0 100 70"
+    71→    71→      preserveAspectRatio="none"
+    72→    72→      className="absolute inset-0 h-full w-full"
+    73→    73→      aria-hidden
+    74→    74→    >
+    75→    75→      {/* track surface */}
+    76→    76→      <path
+    77→    77→        d="M 15,55 L 15,20 L 30,10 L 55,10 L 65,18 L 65,30 L 75,33 L 85,28 L 88,40 L 80,50 L 62,52 L 56,60 L 36,62 L 26,60 Z"
+    78→    78→        fill="none"
+    79→    79→        stroke="#475569"
+    80→    80→        strokeWidth="3.5"
+    81→    81→        strokeLinejoin="round"
+    82→    82→        strokeLinecap="round"
+    83→    83→        className="dark:stroke-slate-500"
+    84→    84→        opacity="0.55"
+    85→    85→      />
+    86→    86→      {/* inner kerb hint */}
+    87→    87→      <path
+    88→    88→        d="M 15,55 L 15,20 L 30,10 L 55,10 L 65,18 L 65,30 L 75,33 L 85,28 L 88,40 L 80,50 L 62,52 L 56,60 L 36,62 L 26,60 Z"
+    89→    89→        fill="none"
+    90→    90→        stroke="#94a3b8"
+    91→    91→        strokeWidth="0.6"
+    92→    92→        strokeDasharray="1.5,1.5"
+    93→    93→        strokeLinejoin="round"
+    94→    94→        opacity="0.6"
+    95→    95→      />
+    96→    96→      {/* start/finish line */}
+    97→    97→      <line x1="15" y1="48" x2="15" y2="55" stroke="#ef4444" strokeWidth="1.2" />
+    98→    98→      <circle cx="15" cy="51" r="1.2" fill="#ef4444" />
+    99→    99→    </svg>
+   100→   100→  )
+   101→   101→}
+   102→   102→
+   103→   103→function TennisCourt() {
+   104→   104→  // Rectangular tennis court with net and service lines
+   105→   105→  return (
+   106→   106→    <div className="absolute left-[30%] top-[34%] h-[32%] w-[40%] rounded border-2 border-emerald-700/50 bg-emerald-600/25">
+   107→   107→      <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/70" />
+   108→   108→      <div className="absolute left-1/2 top-[18%] h-[64%] w-px -translate-x-1/2 bg-white/50" />
+   109→   109→      <div className="absolute left-[12%] top-[18%] h-[64%] w-px bg-white/40" />
+   110→   110→      <div className="absolute right-[12%] top-[18%] h-[64%] w-px bg-white/40" />
+   111→   111→      <div className="absolute left-[12%] top-[18%] right-[12%] h-px bg-white/40" />
+   112→   112→      <div className="absolute left-[12%] bottom-[18%] right-[12%] h-px bg-white/40" />
+   113→   113→    </div>
+   114→   114→  )
+   115→   115→}
+   116→   116→
+   117→   117→function ConcertStage() {
+   118→   118→  // Stage at the top with speaker stacks and light rig
+   119→   119→  return (
+   120→   120→    <>
+   121→   121→      <div className="absolute left-[20%] top-[4%] h-[8%] w-[60%] rounded-b-lg rounded-t-md bg-gradient-to-b from-slate-800 to-slate-900 shadow-lg">
+   122→   122→        <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-fuchsia-500/40 to-transparent" />
+   123→   123→        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[7px] font-semibold uppercase tracking-[0.3em] text-fuchsia-200/80">
+   124→   124→          Stage
+   125→   125→        </div>
+   126→   126→      </div>
+   127→   127→      {/* speaker stacks */}
+   128→   128→      <div className="absolute left-[14%] top-[5%] h-[7%] w-[5%] rounded-sm bg-slate-700" />
+   129→   129→      <div className="absolute right-[14%] top-[5%] h-[7%] w-[5%] rounded-sm bg-slate-700" />
+   130→   130→      {/* light beams */}
+   131→   131→      <div className="absolute left-[25%] top-[12%] h-[20%] w-[50%] bg-gradient-to-b from-amber-300/15 to-transparent" style={{ clipPath: 'polygon(35% 0, 65% 0, 100% 100%, 0 100%)' }} />
+   132→   132→    </>
+   133→   133→  )
+   134→   134→}
+   135→   135→
+   136→   136→function fieldFor(type: VenueLayout['type']) {
+   137→   137→  switch (type) {
+   138→   138→    case 'football': return <FootballField />
+   139→   139→    case 'cricket': return <CricketField />
+   140→   140→    case 'f1': return <F1Circuit />
+   141→   141→    case 'tennis': return <TennisCourt />
+   142→   142→    case 'concert': return <ConcertStage />
+   143→   143→  }
+   144→   144→}
+   145→   145→
+   146→   146→function standLabelsFor(type: VenueLayout['type']) {
+   147→   147→  // Decorative compass labels around the venue
+   148→   148→  const base = 'pointer-events-none absolute text-[9px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/70'
+   149→   149→  switch (type) {
+   150→   150→    case 'football':
+   151→   151→      return (
+   152→   152→        <>
+   153→   153→          <div className={cn(base, 'left-1/2 top-1 -translate-x-1/2')}>North Stand</div>
+   154→   154→          <div className={cn(base, 'bottom-1 left-1/2 -translate-x-1/2')}>South Stand</div>
+   155→   155→          <div className={cn(base, 'left-1 top-1/2 -rotate-90 -translate-y-1/2 origin-center')}>West</div>
+   156→   156→          <div className={cn(base, 'right-1 top-1/2 rotate-90 -translate-y-1/2 origin-center')}>East</div>
+   157→   157→        </>
+   158→   158→      )
+   159→   159→    case 'cricket':
+   160→   160→      return (
+   161→   161→        <>
+   162→   162→          <div className={cn(base, 'left-1/2 top-1 -translate-x-1/2')}>Pavilion End</div>
+   163→   163→          <div className={cn(base, 'bottom-1 left-1/2 -translate-x-1/2')}>Member&apos;s End</div>
+   164→   164→        </>
+   165→   165→      )
+   166→   166→    case 'f1':
+   167→   167→      return (
+   168→   168→        <div className={cn(base, 'left-1/2 top-1 -translate-x-1/2')}>
+   169→   169→          Start / Finish
+   170→   170→        </div>
+   171→   171→      )
+   172→   172→    case 'tennis':
+   173→   173→      return (
+   174→   174→        <>
+   175→   175→          <div className={cn(base, 'left-1/2 top-1 -translate-x-1/2')}>Royal Box</div>
+   176→   176→          <div className={cn(base, 'bottom-1 left-1/2 -translate-x-1/2')}>Umpire&apos;s Chair</div>
+   177→   177→        </>
+   178→   178→      )
+   179→   179→    case 'concert':
+   180→   180→      return null
+   181→   181→  }
+   182→   182→}
+   183→   183→
+   184→   184→// ---------- Venue canvas (shared) ----------
+   185→   185→
+   186→   186→interface CanvasProps {
+   187→   187→  layout: VenueLayout
+   188→   188→  selectedId: string | null
+   189→   189→  hoveredId: string | null
+   190→   190→  onSelect: (block: VenueBlock) => void
+   191→   191→  onHover: (id: string | null) => void
+   192→   192→}
+   193→   193→
+   194→   194→function VenueCanvas({ layout, selectedId, hoveredId, onSelect, onHover }: CanvasProps) {
+   195→   195→  return (
+   196→   196→    <div
+   197→   197→      className={cn(
+   198→   198→        'relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-border',
+   199→   199→        layout.type === 'football' || layout.type === 'cricket' || layout.type === 'tennis'
+   200→   200→          ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/40 dark:to-emerald-900/20'
+   201→   201→          : layout.type === 'f1'
+   202→   202→            ? 'bg-gradient-to-br from-slate-50 to-slate-200 dark:from-slate-900/60 dark:to-slate-800/40'
+   203→   203→            : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900',
+   204→   204→      )}
+   205→   205→    >
+   206→   206→      {/* outer bowl ring */}
+   207→   207→      <div className="absolute inset-[3%] rounded-[42%/48%] border-2 border-dashed border-muted-foreground/25" />
+   208→   208→      <div className="absolute inset-[6%] rounded-[38%/44%] border border-muted-foreground/15" />
+   209→   209→
+   210→   210→      {/* venue-specific field */}
+   211→   211→      {fieldFor(layout.type)}
+   212→   212→
+   213→   213→      {/* compass / stand labels */}
+   214→   214→      {standLabelsFor(layout.type)}
+   215→   215→
+   216→   216→      {/* blocks */}
+   217→   217→      {layout.blocks.map((block) => {
+   218→   218→        const isHovered = hoveredId === block.id
+   219→   219→        const isSelected = selectedId === block.id
+   220→   220→        const isSoldOut = block.available === 0
+   221→   221→        const isDimmed = selectedId !== null && !isSelected
+   222→   222→        const fillPct = (block.available / block.total) * 100
+   223→   223→        return (
+   224→   224→          <motion.button
+   225→   225→            key={block.id}
+   226→   226→            type="button"
+   227→   227→            whileHover={!isSoldOut ? { scale: 1.05 } : undefined}
+   228→   228→            whileTap={!isSoldOut ? { scale: 0.95 } : undefined}
+   229→   229→            onMouseEnter={() => onHover(block.id)}
+   230→   230→            onMouseLeave={() => onHover(null)}
+   231→   231→            onFocus={() => onHover(block.id)}
+   232→   232→            onBlur={() => onHover(null)}
+   233→   233→            onClick={() => !isSoldOut && onSelect(block)}
+   234→   234→            aria-label={`${block.name}, ${block.available} seats available`}
+   235→   235→            aria-pressed={isSelected}
+   236→   236→            disabled={isSoldOut}
+   237→   237→            className={cn(
+   238→   238→              'absolute flex flex-col items-center justify-center rounded-md border-2 p-1 text-center transition-all duration-200',
+   239→   239→              isSoldOut && 'cursor-not-allowed opacity-40',
+   240→   240→              !isSoldOut && 'cursor-pointer',
+   241→   241→              isSelected
+   242→   242→                ? 'border-foreground ring-2 ring-foreground ring-offset-2 ring-offset-background z-20'
+   243→   243→                : isHovered
+   244→   244→                  ? 'border-white/70 z-10'
+   245→   245→                  : 'border-white/30',
+   246→   246→              isDimmed && !isSelected && 'opacity-55 saturate-50',
+   247→   247→            )}
+   248→   248→            style={{
+   249→   249→              left: `${block.x}%`,
+   250→   250→              top: `${block.y}%`,
+   251→   251→              width: `${block.w}%`,
+   252→   252→              height: `${block.h}%`,
+   253→   253→              background: isSoldOut ? '#94a3b8' : block.color,
+   254→   254→              color: 'white',
+   255→   255→            }}
+   256→   256→          >
+   257→   257→            <div className="text-[11px] font-bold leading-none drop-shadow">{block.code}</div>
+   258→   258→            <div className="mt-0.5 hidden text-[8px] font-medium leading-tight opacity-90 sm:block">
+   259→   259→              {block.tier}
+   260→   260→            </div>
+   261→   261→            {/* availability bar */}
+   262→   262→            <div className="mt-1 h-0.5 w-3/4 overflow-hidden rounded-full bg-white/25">
+   263→   263→              <div className="h-full bg-white" style={{ width: `${fillPct}%` }} />
+   264→   264→            </div>
+   265→   265→            {isSelected && (
+   266→   266→              <motion.div
+   267→   267→                initial={{ scale: 0 }}
+   268→   268→                animate={{ scale: 1 }}
+   269→   269→                className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-foreground text-background"
+   270→   270→              >
+   271→   271→                <Check className="h-2.5 w-2.5" strokeWidth={3} />
+   272→   272→              </motion.div>
+   273→   273→            )}
+   274→   274→          </motion.button>
+   275→   275→        )
+   276→   276→      })}
+   277→   277→
+   278→   278→      {/* hover tooltip */}
+   279→   279→      <AnimatePresence>
+   280→   280→        {hoveredId && (
+   281→   281→          <motion.div
+   282→   282→            initial={{ opacity: 0, y: 4 }}
+   283→   283→            animate={{ opacity: 1, y: 0 }}
+   284→   284→            exit={{ opacity: 0, y: 4 }}
+   285→   285→            className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-lg border border-border bg-background/95 px-3 py-2 text-center shadow-lg backdrop-blur"
+   286→   286→          >
+   287→   287→            {(() => {
+   288→   288→              const b = layout.blocks.find(x => x.id === hoveredId)!
+   289→   289→              return (
+   290→   290→                <div className="text-xs">
+   291→   291→                  <div className="font-semibold">{b.name}</div>
+   292→   292→                  <div className="mt-0.5 text-muted-foreground">{b.tier} · {b.available}/{b.total} seats</div>
+   293→   293→                </div>
+   294→   294→              )
+   295→   295→            })()}
+   296→   296→          </motion.div>
+   297→   297→        )}
+   298→   298→      </AnimatePresence>
+   299→   299→    </div>
+   300→   300→  )
+   301→   301→}
+   302→   302→
+   303→   303→// ---------- Block selection card ----------
+   304→   304→
+   305→   305→function BlockCard({
+   306→   306→  block,
+   307→   307→  selected,
+   308→   308→  onSelect,
+   309→   309→  fmt,
+   310→   310→}: {
+   311→   311→  block: VenueBlock
+   312→   312→  selected: boolean
+   313→   313→  onSelect: () => void
+   314→   314→  fmt: (amount: number, from?: string) => string
+   315→   315→}) {
+   316→   316→  const soldOut = block.available === 0
+   317→   317→  const lowAvail = !soldOut && block.available <= 20
+   318→   318→  return (
+   319→   319→    <motion.button
+   320→   320→      type="button"
+   321→   321→      onClick={onSelect}
+   322→   322→      disabled={soldOut}
+   323→   323→      whileHover={!soldOut ? { y: -2 } : undefined}
+   324→   324→      whileTap={!soldOut ? { scale: 0.99 } : undefined}
+   325→   325→      className={cn(
+   326→   326→        'group relative w-full overflow-hidden rounded-xl border-2 p-4 text-left transition-all',
+   327→   327→        selected
+   328→   328→          ? 'border-foreground bg-foreground/5 shadow-md'
+   329→   329→          : 'border-border bg-card hover:border-foreground/30',
+   330→   330→        soldOut && 'cursor-not-allowed opacity-60',
+   331→   331→      )}
+   332→   332→    >
+   333→   333→      {/* tier colour stripe */}
+   334→   334→      <div
+   335→   335→        className="absolute left-0 top-0 h-full w-1"
+   336→   336→        style={{ background: block.color }}
+   337→   337→      />
+   338→   338→      <div className="flex items-start justify-between gap-3 pl-2">
+   339→   339→        <div className="min-w-0 flex-1">
+   340→   340→          <div className="flex flex-wrap items-center gap-2">
+   341→   341→            <span
+   342→   342→              className="grid h-7 min-w-7 place-items-center rounded-md px-1.5 text-xs font-bold text-white"
+   343→   343→              style={{ background: block.color }}
+   344→   344→            >
+   345→   345→              {block.code}
+   346→   346→            </span>
+   347→   347→            <h4 className="text-sm font-semibold leading-tight">{block.name}</h4>
+   348→   348→          </div>
+   349→   349→          <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">{block.description}</p>
+   350→   350→          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+   351→   351→            <Badge variant="outline" className={cn('h-5 text-[10px]', VIEW_QUALITY_BADGE[block.viewQuality])}>
+   352→   352→              <Eye className="mr-1 h-3 w-3" />
+   353→   353→              {block.viewQuality}
+   354→   354→            </Badge>
+   355→   355→            {lowAvail && (
+   356→   356→              <Badge variant="outline" className="h-5 bg-rose-500/10 text-[10px] text-rose-600">
+   357→   357→                Only {block.available} left
+   358→   358→              </Badge>
+   359→   359→            )}
+   360→   360→            {soldOut && (
+   361→   361→              <Badge variant="outline" className="h-5 bg-muted text-[10px] text-muted-foreground">
+   362→   362→                Sold out
+   363→   363→              </Badge>
+   364→   364→            )}
+   365→   365→          </div>
+   366→   366→        </div>
+   367→   367→        <div className="flex flex-col items-end shrink-0">
+   368→   368→          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Per seat</div>
+   369→   369→          <div className="text-lg font-bold leading-tight">{fmt(block.price, block.currency)}</div>
+   370→   370→        </div>
+   371→   371→      </div>
+   372→   372→
+   373→   373→      {/* inclusions */}
+   374→   374→      <div className="mt-3 grid grid-cols-1 gap-1 pl-2 sm:grid-cols-2">
+   375→   375→        {block.inclusions.slice(0, 4).map((inc) => (
+   376→   376→          <div key={inc} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+   377→   377→            <Check className="h-3 w-3 shrink-0 text-emerald-600" />
+   378→   378→            <span className="truncate">{inc}</span>
+   379→   379→          </div>
+   380→   380→        ))}
+   381→   381→      </div>
+   382→   382→
+   383→   383→      {/* footer */}
+   384→   384→      <div className="mt-3 flex items-center justify-between pl-2">
+   385→   385→        <span className="text-[11px] text-muted-foreground">
+   386→   386→          {block.available} / {block.total} seats available
+   387→   387→        </span>
+   388→   388→        <span
+   389→   389→          className={cn(
+   390→   390→            'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+   391→   391→            selected
+   392→   392→              ? 'bg-foreground text-background'
+   393→   393→              : soldOut
+   394→   394→                ? 'bg-muted text-muted-foreground'
+   395→   395→                : 'bg-foreground/5 text-foreground group-hover:bg-foreground/10',
+   396→   396→          )}
+   397→   397→        >
+   398→   398→          {selected ? (
+   399→   399→            <>
+   400→   400→              <Check className="h-3.5 w-3.5" /> Selected
+   401→   401→            </>
+   402→   402→          ) : soldOut ? (
+   403→   403→            'Sold out'
+   404→   404→          ) : (
+   405→   405→            <>
+   406→   406→              Select block <ChevronRight className="h-3.5 w-3.5" />
+   407→   407→            </>
+   408→   408→          )}
+   409→   409→        </span>
+   410→   410→      </div>
+   411→   411→    </motion.button>
+   412→   412→  )
+   413→   413→}
+   414→   414→
+   415→   415→// ---------- Main component ----------
+   416→   416→
+   417→   417→export function VenueSeatingSelector({ event, onSelect, onContinue, maxSeats = 8 }: Props) {
+   418→   418→  const layout = useMemo(() => getVenueLayout(event.category, event.venue), [event])
+   419→   419→  const [selectedBlock, setSelectedBlock] = useState<VenueBlock | null>(null)
+   420→   420→  const [hoveredId, setHoveredId] = useState<string | null>(null)
+   421→   421→  const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([])
+   422→   422→  const fmt = useCurrencyFormatter()
+   423→   423→
+   424→   424→  // Deterministic per-block seat availability map
+   425→   425→  const seatAvailability = useMemo(() => {
+   426→   426→    const map: Record<string, Set<string>> = {}
+   427→   427→    layout.blocks.forEach((block) => {
+   428→   428→      const sold = new Set<string>()
+   429→   429→      const totalSeats = block.rows * block.seatsPerRow
+   430→   430→      const soldCount = totalSeats - block.available
+   431→   431→      for (let i = 0; i < soldCount; i++) {
+   432→   432→        const r = (Math.floor((i * 7 + block.id.charCodeAt(0)) % block.rows)) + 1
+   433→   433→        const s = (Math.floor((i * 13 + (block.id.charCodeAt(1) || 0)) % block.seatsPerRow)) + 1
+   434→   434→        sold.add(`${r}-${s}`)
+   435→   435→      }
+   436→   436→      map[block.id] = sold
+   437→   437→    })
+   438→   438→    return map
+   439→   439→  }, [layout])
+   440→   440→
+   441→   441→  // Notify parent whenever selection changes (parent uses this for its sticky bar)
+   442→   442→  useEffect(() => {
+   443→   443→    onSelect?.(selectedSeats)
+   444→   444→  }, [selectedSeats, onSelect])
+   445→   445→
+   446→   446→  const handleBlockSelect = (block: VenueBlock) => {
+   447→   447→    setSelectedBlock(block)
+   448→   448→    // smooth scroll to the seat picker so the user can pick seats immediately
+   449→   449→    requestAnimationFrame(() => {
+   450→   450→      document.getElementById('seat-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+   451→   451→    })
+   452→   452→  }
+   453→   453→
+   454→   454→  const handleSeatClick = (block: VenueBlock, row: number, seat: number) => {
+   455→   455→    const exists = selectedSeats.find(
+   456→   456→      s => s.blockId === block.id && s.row === row && s.seat === seat,
+   457→   457→    )
+   458→   458→    if (exists) {
+   459→   459→      setSelectedSeats(selectedSeats.filter(
+   460→   460→        s => !(s.blockId === block.id && s.row === row && s.seat === seat),
+   461→   461→      ))
+   462→   462→    } else {
+   463→   463→      if (selectedSeats.length >= maxSeats) return
+   464→   464→      setSelectedSeats([...selectedSeats, {
+   465→   465→        blockId: block.id,
+   466→   466→        blockName: block.name,
+   467→   467→        blockCode: block.code,
+   468→   468→        row, seat,
+   469→   469→        price: block.price,
+   470→   470→        currency: block.currency,
+   471→   471→      }])
+   472→   472→    }
+   473→   473→  }
+   474→   474→
+   475→   475→  const total = selectedSeats.reduce((s, x) => s + x.price, 0)
+   476→   476→  const currency = selectedSeats[0]?.currency || event.currency
+   477→   477→
+   478→   478→  // Group selected seats by block for the summary
+   479→   479→  const seatsByBlock = useMemo(() => {
+   480→   480→    const groups: Record<string, { block: VenueBlock; seats: SelectedSeat[] }> = {}
+   481→   481→    selectedSeats.forEach((s) => {
+   482→   482→      const block = layout.blocks.find(b => b.id === s.blockId)
+   483→   483→      if (!block) return
+   484→   484→      if (!groups[s.blockId]) groups[s.blockId] = { block, seats: [] }
+   485→   485→      groups[s.blockId].seats.push(s)
+   486→   486→    })
+   487→   487→    return Object.values(groups)
+   488→   488→  }, [selectedSeats, layout])
+   489→   489→
+   490→   490→  return (
+   491→   491→    <div className="space-y-6">
+   492→   492→      {/* Header / step indicator */}
+   493→   493→      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+   494→   494→        <div>
+   495→   495→          <div className="flex items-center gap-2">
+   496→   496→            <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs font-bold text-background">1</span>
+   497→   497→            <h3 className="text-base font-semibold">{layout.name} — Choose your block</h3>
+   498→   498→          </div>
+   499→   499→          <p className="mt-1 text-sm text-muted-foreground">{layout.subtitle}</p>
+   500→   500→        </div>
+   501→   501→        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+   502→   502→          {(['VIP', 'Hospitality', 'Premium', 'Gold', 'Silver', 'Bronze'] as const).map(t => (
+   503→   503→            <span key={t} className="flex items-center gap-1">
+   504→   504→              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: TIER_COLORS[t] }} />
+   505→   505→              {t}
+   506→   506→            </span>
+   507→   507→          ))}
+   508→   508→        </div>
+   509→   509→      </div>
+   510→   510→
+   511→   511→      {/* Two-column: block list + venue map */}
+   512→   512→      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+   513→   513→        {/* Block list */}
+   514→   514→        <div className="lg:col-span-3">
+   515→   515→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   516→   516→            {layout.blocks.map(block => (
+   517→   517→              <BlockCard
+   518→   518→                key={block.id}
+   519→   519→                block={block}
+   520→   520→                selected={selectedBlock?.id === block.id}
+   521→   521→                onSelect={() => handleBlockSelect(block)}
+   522→   522→                fmt={fmt}
+   523→   523→              />
+   524→   524→            ))}
+   525→   525→          </div>
+   526→   526→        </div>
+   527→   527→
+   528→   528→        {/* Venue map */}
+   529→   529→        <div className="lg:col-span-2">
+   530→   530→          <div className="lg:sticky lg:top-20">
+   531→   531→            <Card className="overflow-hidden p-0">
+   532→   532→              <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2.5">
+   533→   533→                <div>
+   534→   534→                  <h4 className="flex items-center gap-1.5 text-xs font-semibold">
+   535→   535→                    <MapPin className="h-3.5 w-3.5" />
+   536→   536→                    {event.venue}
+   537→   537→                  </h4>
+   538→   538→                  <p className="text-[10px] text-muted-foreground">
+   539→   539→                    {selectedBlock ? 'Selected block highlighted below' : 'Click a block to view its location'}
+   540→   540→                  </p>
+   541→   541→                </div>
+   542→   542→                {selectedBlock && (
+   543→   543→                  <Badge className="bg-foreground text-[10px] text-background hover:bg-foreground">
+   544→   544→                    <span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: selectedBlock.color }} />
+   545→   545→                    Selected
+   546→   546→                  </Badge>
+   547→   547→                )}
+   548→   548→              </div>
+   549→   549→              <div className="p-3">
+   550→   550→                <VenueCanvas
+   551→   551→                  layout={layout}
+   552→   552→                  selectedId={selectedBlock?.id ?? null}
+   553→   553→                  hoveredId={hoveredId}
+   554→   554→                  onSelect={handleBlockSelect}
+   555→   555→                  onHover={setHoveredId}
+   556→   556→                />
+   557→   557→              </div>
+   558→   558→              <div className="flex flex-wrap items-center gap-3 border-t border-border bg-muted/20 px-4 py-2 text-[10px] text-muted-foreground">
+   559→   559→                <span className="flex items-center gap-1">
+   560→   560→                  <span className="h-2.5 w-2.5 rounded-sm border border-white/40" style={{ background: '#94a3b8' }} />
+   561→   561→                  Sold out
+   562→   562→                </span>
+   563→   563→                <span className="flex items-center gap-1">
+   564→   564→                  <span className="h-2.5 w-2.5 rounded-sm border-2 border-foreground bg-card" />
+   565→   565→                  Selected category
+   566→   566→                </span>
+   567→   567→                <span className="flex items-center gap-1">
+   568→   568→                  <span className="h-2.5 w-2.5 rounded-sm border border-white/30" style={{ background: '#3b82f6' }} />
+   569→   569→                  Available
+   570→   570→                </span>
+   571→   571→              </div>
+   572→   572→            </Card>
+   573→   573→          </div>
+   574→   574→        </div>
+   575→   575→      </div>
+   576→   576→
+   577→   577→      {/* Step 2: Seat picker (contextual to selected block) */}
+   578→   578→      <AnimatePresence mode="wait">
+   579→   579→        {selectedBlock && (
+   580→   580→          <motion.div
+   581→   581→            key={selectedBlock.id}
+   582→   582→            initial={{ opacity: 0, y: 12 }}
+   583→   583→            animate={{ opacity: 1, y: 0 }}
+   584→   584→            exit={{ opacity: 0, y: -8 }}
+   585→   585→            id="seat-picker"
+   586→   586→            className="scroll-mt-24"
+   587→   587→          >
+   588→   588→            <Card className="overflow-hidden p-0">
+   589→   589→              <div className="flex flex-col gap-1 border-b border-border bg-muted/30 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+   590→   590→                <div>
+   591→   591→                  <div className="flex items-center gap-2">
+   592→   592→                    <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-xs font-bold text-background">2</span>
+   593→   593→                    <h3 className="text-base font-semibold">Pick your seats — {selectedBlock.name}</h3>
+   594→   594→                  </div>
+   595→   595→                  <p className="mt-1 text-xs text-muted-foreground">
+   596→   596→                    {selectedBlock.description}
+   597→   597→                  </p>
+   598→   598→                </div>
+   599→   599→                <div className="flex flex-wrap items-center gap-2">
+   600→   600→                  <Badge variant="outline" className={VIEW_QUALITY_BADGE[selectedBlock.viewQuality]}>
+   601→   601→                    <Eye className="mr-1 h-3 w-3" />
+   602→   602→                    {selectedBlock.viewQuality} view
+   603→   603→                  </Badge>
+   604→   604→                  <Badge variant="outline" className="bg-foreground/5">
+   605→   605→                    {fmt(selectedBlock.price, selectedBlock.currency)} / seat
+   606→   606→                  </Badge>
+   607→   607→                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700">
+   608→   608→                    {selectedBlock.available} available
+   609→   609→                  </Badge>
+   610→   610→                </div>
+   611→   611→              </div>
+   612→   612→
+   613→   613→              {/* inclusions */}
+   614→   614→              <div className="flex flex-wrap gap-1.5 border-b border-border px-5 py-3">
+   615→   615→                {selectedBlock.inclusions.map(inc => (
+   616→   616→                  <span key={inc} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+   617→   617→                    <Check className="h-2.5 w-2.5 text-emerald-600" />
+   618→   618→                    {inc}
+   619→   619→                  </span>
+   620→   620→                ))}
+   621→   621→              </div>
+   622→   622→
+   623→   623→              {/* seat grid */}
+   624→   624→              <div className="p-5">
+   625→   625→                <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+   626→   626→                  <span>Click seats to select · Max {maxSeats} per booking</span>
+   627→   627→                  <span>{selectedSeats.filter(s => s.blockId === selectedBlock.id).length} selected in this block</span>
+   628→   628→                </div>
+   629→   629→
+   630→   630→                <div className="overflow-x-auto">
+   631→   631→                  <div className="inline-block min-w-full">
+   632→   632→                    {/* field indicator */}
+   633→   633→                    <div className="mb-3 flex items-center gap-2">
+   634→   634→                      <div className="h-1 flex-1 rounded bg-emerald-500/30" />
+   635→   635→                      <Armchair className="h-3.5 w-3.5 text-muted-foreground" />
+   636→   636→                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+   637→   637→                        {layout.type === 'f1' ? 'Track' : layout.type === 'concert' ? 'Stage' : 'Field'}
+   638→   638→                      </span>
+   639→   639→                      <Armchair className="h-3.5 w-3.5 text-muted-foreground" />
+   640→   640→                      <div className="h-1 flex-1 rounded bg-emerald-500/30" />
+   641→   641→                    </div>
+   642→   642→
+   643→   643→                    <div className="space-y-1.5">
+   644→   644→                      {Array.from({ length: selectedBlock.rows }).map((_, rIdx) => {
+   645→   645→                        const row = rIdx + 1
+   646→   646→                        return (
+   647→   647→                          <div key={row} className="flex items-center gap-2">
+   648→   648→                            <div className="w-6 text-right text-[10px] font-medium text-muted-foreground">{row}</div>
+   649→   649→                            <div className="flex gap-1">
+   650→   650→                              {Array.from({ length: selectedBlock.seatsPerRow }).map((_, sIdx) => {
+   651→   651→                                const seat = sIdx + 1
+   652→   652→                                const seatKey = `${row}-${seat}`
+   653→   653→                                const sold = seatAvailability[selectedBlock.id].has(seatKey)
+   654→   654→                                const sel = selectedSeats.find(
+   655→   655→                                  s => s.blockId === selectedBlock.id && s.row === row && s.seat === seat,
+   656→   656→                                )
+   657→   657→                                return (
+   658→   658→                                  <button
+   659→   659→                                    key={seatKey}
+   660→   660→                                    type="button"
+   661→   661→                                    disabled={sold}
+   662→   662→                                    onClick={() => handleSeatClick(selectedBlock, row, seat)}
+   663→   663→                                    aria-label={sold ? `Row ${row} seat ${seat} sold` : `Select row ${row} seat ${seat}`}
+   664→   664→                                    className={cn(
+   665→   665→                                      'grid h-6 w-6 place-items-center rounded text-[9px] font-medium transition-all',
+   666→   666→                                      sold && 'cursor-not-allowed bg-rose-200 text-rose-400 dark:bg-rose-900/40 dark:text-rose-500',
+   667→   667→                                      !sold && sel && 'bg-foreground text-background ring-2 ring-foreground ring-offset-1',
+   668→   668→                                      !sold && !sel && 'bg-emerald-100 text-emerald-700 hover:bg-emerald-300 hover:scale-110 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/50',
+   669→   669→                                    )}
+   670→   670→                                    title={sold ? 'Sold' : `Row ${row}, Seat ${seat}`}
+   671→   671→                                  >
+   672→   672→                                    {sold ? '×' : sel ? <Check className="h-3 w-3" /> : seat}
+   673→   673→                                  </button>
+   674→   674→                                )
+   675→   675→                              })}
+   676→   676→                            </div>
+   677→   677→                            <div className="w-6 text-[10px] font-medium text-muted-foreground">{row}</div>
+   678→   678→                          </div>
+   679→   679→                        )
+   680→   680→                      })}
+   681→   681→                    </div>
+   682→   682→
+   683→   683→                    {/* legend */}
+   684→   684→                    <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px]">
+   685→   685→                      <span className="flex items-center gap-1">
+   686→   686→                        <span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300" />
+   687→   687→                        Available
+   688→   688→                      </span>
+   689→   689→                      <span className="flex items-center gap-1">
+   690→   690→                        <span className="h-3 w-3 rounded bg-foreground" />
+   691→   691→                        Selected
+   692→   692→                      </span>
+   693→   693→                      <span className="flex items-center gap-1">
+   694→   694→                        <span className="h-3 w-3 rounded bg-rose-200 dark:bg-rose-900/40" />
+   695→   695→                        Sold
+   696→   696→                      </span>
+   697→   697→                    </div>
+   698→   698→                  </div>
+   699→   699→                </div>
+   700→   700→              </div>
+   701→   701→            </Card>
+   702→   702→          </motion.div>
+   703→   703→        )}
+   704→   704→      </AnimatePresence>
+   705→   705→
+   706→   706→      {/* Empty-state hint when no block selected */}
+   707→   707→      <AnimatePresence>
+   708→   708→        {!selectedBlock && (
+   709→   709→          <motion.div
+   710→   710→            initial={{ opacity: 0 }}
+   711→   711→            animate={{ opacity: 1 }}
+   712→   712→            exit={{ opacity: 0 }}
+   713→   713→          >
+   714→   714→            <Card className="flex items-center gap-3 border-dashed p-4">
+   715→   715→              <div className="grid h-9 w-9 place-items-center rounded-full bg-muted">
+   716→   716→                <Info className="h-4 w-4 text-muted-foreground" />
+   717→   717→              </div>
+   718→   718→              <div className="text-sm text-muted-foreground">
+   719→   719→                Select a block above to reveal its location on the {layout.name.toLowerCase()} and pick your seats.
+   720→   720→              </div>
+   721→   721→            </Card>
+   722→   722→          </motion.div>
+   723→   723→        )}
+   724→   724→      </AnimatePresence>
+   725→   725→
+   726→   726→      {/* Step 3: Selected seats summary */}
+   727→   727→      <AnimatePresence>
+   728→   728→        {selectedSeats.length > 0 && (
+   729→   729→          <motion.div
+   730→   730→            initial={{ opacity: 0, y: 10 }}
+   731→   731→            animate={{ opacity: 1, y: 0 }}
+   732→   732→            exit={{ opacity: 0, y: 10 }}
+   733→   733→          >
+   734→   734→            <Card className="p-5">
+   735→   735→              <div className="flex items-center justify-between">
+   736→   736→                <h3 className="flex items-center gap-2 text-sm font-semibold">
+   737→   737→                  <Users className="h-4 w-4" />
+   738→   738→                  Your seats ({selectedSeats.length})
+   739→   739→                </h3>
+   740→   740→                <button
+   741→   741→                  type="button"
+   742→   742→                  onClick={() => setSelectedSeats([])}
+   743→   743→                  className="text-xs text-muted-foreground hover:text-foreground"
+   744→   744→                >
+   745→   745→                  Clear all
+   746→   746→                </button>
+   747→   747→              </div>
+   748→   748→              <Separator className="my-3" />
+   749→   749→              <div className="space-y-3">
+   750→   750→                {seatsByBlock.map(({ block, seats }) => (
+   751→   751→                  <div key={block.id} className="rounded-lg border border-border bg-muted/20 p-3">
+   752→   752→                    <div className="mb-2 flex items-center justify-between">
+   753→   753→                      <div className="flex items-center gap-2">
+   754→   754→                        <span
+   755→   755→                          className="grid h-6 min-w-6 place-items-center rounded px-1.5 text-[10px] font-bold text-white"
+   756→   756→                          style={{ background: block.color }}
+   757→   757→                        >
+   758→   758→                          {block.code}
+   759→   759→                        </span>
+   760→   760→                        <span className="text-sm font-medium">{block.name}</span>
+   761→   761→                      </div>
+   762→   762→                      <span className="text-xs text-muted-foreground">
+   763→   763→                        {seats.length} × {fmt(block.price, block.currency)}
+   764→   764→                      </span>
+   765→   765→                    </div>
+   766→   766→                    <div className="flex flex-wrap gap-1.5">
+   767→   767→                      {seats
+   768→   768→                        .slice()
+   769→   769→                        .sort((a, b) => a.row - b.row || a.seat - b.seat)
+   770→   770→                        .map((s, i) => (
+   771→   771→                          <span
+   772→   772→                            key={i}
+   773→   773→                            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium"
+   774→   774→                          >
+   775→   775→                            <TicketIcon className="h-3 w-3 text-muted-foreground" />
+   776→   776→                            Row {s.row} · Seat {s.seat}
+   777→   777→                            <button
+   778→   778→                              type="button"
+   779→   779→                              onClick={() => setSelectedSeats(selectedSeats.filter((_, idx) => idx !== selectedSeats.indexOf(s)))}
+   780→   780→                              className="ml-0.5 text-rose-500 hover:text-rose-700"
+   781→   781→                              aria-label="Remove seat"
+   782→   782→                            >
+   783→   783→                              <X className="h-3 w-3" />
+   784→   784→                            </button>
+   785→   785→                          </span>
+   786→   786→                        ))}
+   787→   787→                    </div>
+   788→   788→                  </div>
+   789→   789→                ))}
+   790→   790→              </div>
+   791→   791→              <Separator className="my-3" />
+   792→   792→              <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+   793→   793→                <div>
+   794→   794→                  <div className="text-xs text-muted-foreground">Total ({selectedSeats.length} seats)</div>
+   795→   795→                  <div className="text-2xl font-bold">{fmt(total, currency)}</div>
+   796→   796→                </div>
+   797→   797→                <Button className="gap-2" onClick={() => onContinue?.(selectedSeats)}>
+   798→   798→                  Continue to checkout
+   799→   799→                  <ArrowRight className="h-4 w-4" />
+   800→   800→                </Button>
+   801→   801→              </div>
+   802→   802→            </Card>
+   803→   803→          </motion.div>
+   804→   804→        )}
+   805→   805→      </AnimatePresence>
+   806→   806→
+   807→   807→      {/* trust bar */}
+   808→   808→      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+   809→   809→        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+   810→   810→        <span>All seats allocated together · 100% official tickets · Instant confirmation · Venue-specific layout</span>
+   811→   811→      </div>
+   812→   812→    </div>
+   813→   813→  )
+   814→   814→}
+   815→   815→

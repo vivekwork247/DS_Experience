@@ -1,0 +1,523 @@
+     1→// Types & mock data for DS Experiences platform
+     2→
+     3→export interface EventItem {
+     4→  id: string
+     5→  name: string
+     6→  category: 'Sports' | 'Concerts' | 'Formula 1' | 'Cricket' | 'Hospitality'
+     7→  venue: string
+     8→  city: string
+     9→  country: string
+    10→  date: string
+    11→  time: string
+    12→  image: string
+    13→  gallery: string[]
+    14→  startingPrice: number
+    15→  currency: string
+    16→  ticketsAvailable: number
+    17→  featured?: boolean
+    18→  description: string
+    19→}
+    20→
+    21→// Curated gallery sets per category — real, distinct Unsplash photos
+    22→const GALLERY = {
+    23→  Sports: [
+    24→    'https://images.unsplash.com/photo-1570626827445-bd6f4f9b7f3e?w=1200&q=80',
+    25→    'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&q=80',
+    26→    'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1200&q=80',
+    27→    'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=1200&q=80',
+    28→  ],
+    29→  Concerts: [
+    30→    'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&q=80',
+    31→    'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200&q=80',
+    32→    'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1200&q=80',
+    33→    'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=1200&q=80',
+    34→  ],
+    35→  'Formula 1': [
+    36→    'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1200&q=80',
+    37→    'https://images.unsplash.com/photo-1583121274602-3e2820c69887?w=1200&q=80',
+    38→    'https://images.unsplash.com/photo-1540717945008-8c0e3e84b7b6?w=1200&q=80',
+    39→    'https://images.unsplash.com/photo-1505158498152-b3ad7c23f140?w=1200&q=80',
+    40→  ],
+    41→  Cricket: [
+    42→    'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=1200&q=80',
+    43→    'https://images.unsplash.com/photo-1606925797300-0b35e9d1794e?w=1200&q=80',
+    44→    'https://images.unsplash.com/photo-1593766787879-91a82c0c0a92?w=1200&q=80',
+    45→    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&q=80',
+    46→  ],
+    47→  Hospitality: [
+    48→    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80',
+    49→    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80',
+    50→    'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=1200&q=80',
+    51→    'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=1200&q=80',
+    52→  ],
+    53→}
+    54→
+    55→export interface TicketTier {
+    56→  id: string
+    57→  name: string
+    58→  price: number
+    59→  currency: string
+    60→  available: number
+    61→  features: string[]
+    62→  badge?: string
+    63→}
+    64→
+    65→export interface Booking {
+    66→  id: string
+    67→  eventName: string
+    68→  eventDate: string
+    69→  venue: string
+    70→  customer: string
+    71→  email: string
+    72→  tier: string
+    73→  qty: number
+    74→  amount: number
+    75→  currency: string
+    76→  status: 'Confirmed' | 'Pending' | 'Refunded' | 'Cancelled'
+    77→  bookingDate: string
+    78→  paymentMethod: string
+    79→}
+    80→
+    81→export interface B2BBooking extends Booking {
+    82→  supplier: string
+    83→  commission: number
+    84→  customerName: string
+    85→}
+    86→
+    87→export const CATEGORIES = [
+    88→  { name: 'Sports', icon: 'Trophy', count: 248, gradient: 'from-amber-500/20 to-orange-500/20' },
+    89→  { name: 'Concerts', icon: 'Music', count: 412, gradient: 'from-rose-500/20 to-pink-500/20' },
+    90→  { name: 'Formula 1', icon: 'Car', count: 24, gradient: 'from-red-500/20 to-rose-500/20' },
+    91→  { name: 'Cricket', icon: 'CircleDot', count: 86, gradient: 'from-emerald-500/20 to-green-500/20' },
+    92→  { name: 'Hospitality', icon: 'Wine', count: 132, gradient: 'from-purple-500/20 to-fuchsia-500/20' },
+    93→] as const
+    94→
+    95→export const EVENTS: EventItem[] = [
+    96→  {
+    97→    id: 'evt-001',
+    98→    name: 'UEFA Champions League Final 2026',
+    99→    category: 'Sports',
+   100→    venue: 'Wembley Stadium',
+   101→    city: 'London',
+   102→    country: 'United Kingdom',
+   103→    date: '2026-05-30',
+   104→    time: '21:00',
+   105→    image: 'https://images.unsplash.com/photo-1522778119026-d6a21f3e37d9?w=1200&q=80',
+   106→    gallery: GALLERY.Sports,
+   107→    startingPrice: 450,
+   108→    currency: 'USD',
+   109→    ticketsAvailable: 124,
+   110→    featured: true,
+   111→    description: 'The pinnacle of European club football returns to the iconic Wembley Stadium. Witness history as two giants battle for the most coveted trophy in club football. Includes optional hospitality packages with premium seating, gourmet dining, and VIP access.',
+   112→  },
+   113→  {
+   114→    id: 'evt-002',
+   115→    name: 'Monaco Grand Prix 2026',
+   116→    category: 'Formula 1',
+   117→    venue: 'Circuit de Monaco',
+   118→    city: 'Monte Carlo',
+   119→    country: 'Monaco',
+   120→    date: '2026-05-24',
+   121→    time: '15:00',
+   122→    image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1200&q=80',
+   123→    gallery: GALLERY['Formula 1'],
+   124→    startingPrice: 890,
+   125→    currency: 'USD',
+   126→    ticketsAvailable: 56,
+   127→    featured: true,
+   128→    description: 'Experience the most prestigious race in the Formula 1 calendar. The Monaco Grand Prix offers glamour, history, and the tightest street circuit on the schedule. Premium hospitality packages available with trackside views and gourmet catering.',
+   129→  },
+   130→  {
+   131→    id: 'evt-003',
+   132→    name: 'Coldplay: Music of the Spheres Tour',
+   133→    category: 'Concerts',
+   134→    venue: 'O2 Arena',
+   135→    city: 'London',
+   136→    country: 'United Kingdom',
+   137→    date: '2026-06-15',
+   138→    time: '19:30',
+   139→    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&q=80',
+   140→    gallery: GALLERY.Concerts,
+   141→    startingPrice: 180,
+   142→    currency: 'USD',
+   143→    ticketsAvailable: 432,
+   144→    featured: true,
+   145→    description: 'Coldplay returns to London with their record-breaking Music of the Spheres tour. Expect spectacular visuals, immersive light shows, and a setlist spanning their greatest hits alongside new material from their latest album.',
+   146→  },
+   147→  {
+   148→    id: 'evt-004',
+   149→    name: 'India vs Australia T20 International',
+   150→    category: 'Cricket',
+   151→    venue: 'Wankhede Stadium',
+   152→    city: 'Mumbai',
+   153→    country: 'India',
+   154→    date: '2026-04-12',
+   155→    time: '19:00',
+   156→    image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=1200&q=80',
+   157→    gallery: GALLERY.Cricket,
+   158→    startingPrice: 65,
+   159→    currency: 'USD',
+   160→    ticketsAvailable: 286,
+   161→    featured: true,
+   162→    description: 'The rivalry continues as India takes on Australia in a high-octane T20 International at the iconic Wankhede Stadium. Hospitality boxes available with premium catering and reserved seating.',
+   163→  },
+   164→  {
+   165→    id: 'evt-005',
+   166→    name: 'Singapore Grand Prix 2026',
+   167→    category: 'Formula 1',
+   168→    venue: 'Marina Bay Street Circuit',
+   169→    city: 'Singapore',
+   170→    country: 'Singapore',
+   171→    date: '2026-09-20',
+   172→    time: '20:00',
+   173→    image: 'https://images.unsplash.com/photo-1583121274602-3e2820c69887?w=1200&q=80',
+   174→    gallery: GALLERY['Formula 1'],
+   175→    startingPrice: 720,
+   176→    currency: 'USD',
+   177→    ticketsAvailable: 78,
+   178→    description: 'Formula 1 under the lights. The Singapore Grand Prix is the original night race, combining a challenging street circuit with the dazzle of Southeast Asia\'s premier city-state.',
+   179→  },
+   180→  {
+   181→    id: 'evt-006',
+   182→    name: 'Adele: Weekends with Adele',
+   183→    category: 'Concerts',
+   184→    venue: 'The Colosseum at Caesars Palace',
+   185→    city: 'Las Vegas',
+   186→    country: 'United States',
+   187→    date: '2026-07-18',
+   188→    time: '20:00',
+   189→    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1200&q=80',
+   190→    gallery: GALLERY.Concerts,
+   191→    startingPrice: 320,
+   192→    currency: 'USD',
+   193→    ticketsAvailable: 92,
+   194→    description: 'An intimate, once-in-a-lifetime residency with Adele at the historic Colosseum. Featuring her timeless ballads and an exquisite production designed exclusively for this venue.',
+   195→  },
+   196→  {
+   197→    id: 'evt-007',
+   198→    name: 'Real Madrid vs FC Barcelona — El Clásico',
+   199→    category: 'Sports',
+   200→    venue: 'Santiago Bernabéu',
+   201→    city: 'Madrid',
+   202→    country: 'Spain',
+   203→    date: '2026-10-25',
+   204→    time: '21:00',
+   205→    image: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1200&q=80',
+   206→    gallery: GALLERY.Sports,
+   207→    startingPrice: 380,
+   208→    currency: 'USD',
+   209→    ticketsAvailable: 64,
+   210→    description: 'The greatest rivalry in world football returns to the Bernabéu. El Clásico is more than a match — it is a cultural phenomenon. Hospitality options include VIP lounges and pre-match fine dining.',
+   211→  },
+   212→  {
+   213→    id: 'evt-008',
+   214→    name: 'Dubai Jazz Festival 2026',
+   215→    category: 'Concerts',
+   216→    venue: 'Dubai Media City Amphitheatre',
+   217→    city: 'Dubai',
+   218→    country: 'United Arab Emirates',
+   219→    date: '2026-02-22',
+   220→    time: '19:00',
+   221→    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=1200&q=80',
+   222→    gallery: GALLERY.Concerts,
+   223→    startingPrice: 145,
+   224→    currency: 'USD',
+   225→    ticketsAvailable: 312,
+   226→    description: 'Three nights of world-class jazz under the Dubai sky. Featuring headline acts from across the globe, the festival combines musical excellence with the luxury hospitality Dubai is known for.',
+   227→  },
+   228→  {
+   229→    id: 'evt-009',
+   230→    name: 'Dubai Duty Free Tennis Championships',
+   231→    category: 'Sports',
+   232→    venue: 'Aviation Club Tennis Centre',
+   233→    city: 'Dubai',
+   234→    country: 'United Arab Emirates',
+   235→    date: '2026-02-26',
+   236→    time: '14:00',
+   237→    image: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&q=80',
+   238→    gallery: GALLERY.Sports,
+   239→    startingPrice: 95,
+   240→    currency: 'USD',
+   241→    ticketsAvailable: 198,
+   242→    description: 'ATP 500 action featuring the world\'s top men\'s players competing on hard courts in Dubai. Premium hospitality packages include courtside seating and Champions Club access.',
+   243→  },
+   244→  {
+   245→    id: 'evt-010',
+   246→    name: 'Paris Saint-Germain vs Marseille — Le Classique',
+   247→    category: 'Sports',
+   248→    venue: 'Parc des Princes',
+   249→    city: 'Paris',
+   250→    country: 'France',
+   251→    date: '2026-03-08',
+   252→    time: '20:45',
+   253→    image: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=1200&q=80',
+   254→    gallery: GALLERY.Sports,
+   255→    startingPrice: 290,
+   256→    currency: 'USD',
+   257→    ticketsAvailable: 88,
+   258→    description: 'French football\'s fiercest rivalry. The atmosphere at Parc des Princes for Le Classique is unmatched anywhere in Europe. Hospitality packages available with VIP lounge access.',
+   259→  },
+   260→  {
+   261→    id: 'evt-011',
+   262→    name: 'Ed Sheeran: Mathematics Tour',
+   263→    category: 'Concerts',
+   264→    venue: 'Singapore National Stadium',
+   265→    city: 'Singapore',
+   266→    country: 'Singapore',
+   267→    date: '2026-11-14',
+   268→    time: '19:30',
+   269→    image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c855?w=1200&q=80',
+   270→    gallery: GALLERY.Concerts,
+   271→    startingPrice: 155,
+   272→    currency: 'USD',
+   273→    ticketsAvailable: 524,
+   274→    description: 'Ed Sheeran brings his record-breaking Mathematics Tour to Southeast Asia. One man, one loop pedal, and stadium-shaking anthems in an unforgettable live experience.',
+   275→  },
+   276→  {
+   277→    id: 'evt-012',
+   278→    name: 'Indian Premier League Final 2026',
+   279→    category: 'Cricket',
+   280→    venue: 'Narendra Modi Stadium',
+   281→    city: 'Ahmedabad',
+   282→    country: 'India',
+   283→    date: '2026-05-29',
+   284→    time: '19:30',
+   285→    image: 'https://images.unsplash.com/photo-1606925797300-0b35e9d1794e?w=1200&q=80',
+   286→    gallery: GALLERY.Cricket,
+   287→    startingPrice: 110,
+   288→    currency: 'USD',
+   289→    ticketsAvailable: 1100,
+   290→    description: 'The biggest night in T20 cricket. The IPL Final at the world\'s largest cricket stadium is an electric celebration of sport, music, and entertainment. Corporate boxes and hospitality suites available.',
+   291→  },
+   292→]
+   293→
+   294→export const TICKET_TIERS: Record<string, TicketTier[]> = {
+   295→  'evt-001': [
+   296→    { id: 't1', name: 'Hospitality VIP', price: 2400, currency: 'USD', available: 18, features: ['Private suite', 'Gourmet 4-course meal', 'Open bar', 'Meet & greet with legend', 'Parking included'], badge: 'Most Popular' },
+   297→    { id: 't2', name: 'Premium Category 1', price: 1450, currency: 'USD', available: 32, features: ['Best lower-tier seats', 'Lounge access', 'Pre-match dining', 'Premium parking'] },
+   298→    { id: 't3', name: 'Category 2', price: 780, currency: 'USD', available: 48, features: ['Mid-tier seating', 'Concessions access'] },
+   299→    { id: 't4', name: 'Category 3', price: 450, currency: 'USD', available: 26, features: ['Upper-tier seating', 'Restricted view possible'] },
+   300→  ],
+   301→  default: [
+   302→    { id: 't1', name: 'VIP', price: 1200, currency: 'USD', available: 24, features: ['Premium seating', 'Open bar', 'Backstage access', 'Parking'], badge: 'Most Popular' },
+   303→    { id: 't2', name: 'Premium', price: 480, currency: 'USD', available: 86, features: ['Premium seating', 'Lounge access', 'Welcome drink'] },
+   304→    { id: 't3', name: 'Economy', price: 180, currency: 'USD', available: 220, features: ['Standard seating', 'Concessions access'] },
+   305→    { id: 't4', name: 'Hospitality Package', price: 1850, currency: 'USD', available: 12, features: ['Private box', '3-course meal', 'Wine pairing', 'Dedicated host', 'Premium parking'] },
+   306→  ],
+   307→}
+   308→
+   309→export const DESTINATIONS = [
+   310→  { name: 'London', country: 'United Kingdom', image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80', events: 142 },
+   311→  { name: 'Dubai', country: 'United Arab Emirates', image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80', events: 88 },
+   312→  { name: 'Paris', country: 'France', image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80', events: 116 },
+   313→  { name: 'Singapore', country: 'Singapore', image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&q=80', events: 73 },
+   314→]
+   315→
+   316→export const UPCOMING_BOOKINGS: Booking[] = [
+   317→  {
+   318→    id: 'BK-2026-00184',
+   319→    eventName: 'UEFA Champions League Final 2026',
+   320→    eventDate: '2026-05-30',
+   321→    venue: 'Wembley Stadium, London',
+   322→    customer: 'James Whitmore',
+   323→    email: 'james.whitmore@example.com',
+   324→    tier: 'Premium Category 1',
+   325→    qty: 2,
+   326→    amount: 2900,
+   327→    currency: 'USD',
+   328→    status: 'Confirmed',
+   329→    bookingDate: '2026-01-12',
+   330→    paymentMethod: 'Visa •••• 4291',
+   331→  },
+   332→  {
+   333→    id: 'BK-2026-00196',
+   334→    eventName: 'Coldplay: Music of the Spheres Tour',
+   335→    eventDate: '2026-06-15',
+   336→    venue: 'O2 Arena, London',
+   337→    customer: 'James Whitmore',
+   338→    email: 'james.whitmore@example.com',
+   339→    tier: 'Premium',
+   340→    qty: 4,
+   341→    amount: 1920,
+   342→    currency: 'USD',
+   343→    status: 'Confirmed',
+   344→    bookingDate: '2026-02-04',
+   345→    paymentMethod: 'Visa •••• 4291',
+   346→  },
+   347→  {
+   348→    id: 'BK-2026-00211',
+   349→    eventName: 'Monaco Grand Prix 2026',
+   350→    eventDate: '2026-05-24',
+   351→    venue: 'Circuit de Monaco, Monte Carlo',
+   352→    customer: 'James Whitmore',
+   353→    email: 'james.whitmore@example.com',
+   354→    tier: 'Hospitality VIP',
+   355→    qty: 1,
+   356→    amount: 2400,
+   357→    currency: 'USD',
+   358→    status: 'Pending',
+   359→    bookingDate: '2026-02-18',
+   360→    paymentMethod: 'Visa •••• 4291',
+   361→  },
+   362→]
+   363→
+   364→export const PAST_BOOKINGS: Booking[] = [
+   365→  {
+   366→    id: 'BK-2025-118472',
+   367→    eventName: 'Singapore Grand Prix 2025',
+   368→    eventDate: '2025-10-05',
+   369→    venue: 'Marina Bay Street Circuit, Singapore',
+   370→    customer: 'James Whitmore',
+   371→    email: 'james.whitmore@example.com',
+   372→    tier: 'Premium',
+   373→    qty: 2,
+   374→    amount: 1440,
+   375→    currency: 'USD',
+   376→    status: 'Confirmed',
+   377→    bookingDate: '2025-08-22',
+   378→    paymentMethod: 'Visa •••• 4291',
+   379→  },
+   380→  {
+   381→    id: 'BK-2025-118291',
+   382→    eventName: 'El Clásico — Real Madrid vs Barcelona',
+   383→    eventDate: '2025-10-26',
+   384→    venue: 'Santiago Bernabéu, Madrid',
+   385→    customer: 'James Whitmore',
+   386→    email: 'james.whitmore@example.com',
+   387→    tier: 'Category 2',
+   388→    qty: 2,
+   389→    amount: 760,
+   390→    currency: 'USD',
+   391→    status: 'Refunded',
+   392→    bookingDate: '2025-09-14',
+   393→    paymentMethod: 'Visa •••• 4291',
+   394→  },
+   395→]
+   396→
+   397→// ============ B2B / Admin mock data ============
+   398→
+   399→export const SUPPLIERS = [
+   400→  { id: 'SUP-001', name: 'Prestige Sports Global', status: 'Connected', lastSync: '2 min ago', bookings: 1248, revenue: 486200, margin: 18.4, credentials: 'API Key ••••8a3f' },
+   401→  { id: 'SUP-002', name: 'EuroEvents Direct', status: 'Connected', lastSync: '4 min ago', bookings: 892, revenue: 312800, margin: 21.7, credentials: 'OAuth ••••2b91' },
+   402→  { id: 'SUP-003', name: 'AsiaTix Network', status: 'Connected', lastSync: '1 min ago', bookings: 2104, revenue: 528900, margin: 14.2, credentials: 'API Key ••••7c2e' },
+   403→  { id: 'SUP-004', name: 'Hospitality Suites Ltd', status: 'Disabled', lastSync: '6 hr ago', bookings: 318, revenue: 184500, margin: 28.9, credentials: 'API Key ••••4d8b' },
+   404→  { id: 'SUP-005', name: 'Concert Live Worldwide', status: 'Connected', lastSync: '3 min ago', bookings: 1672, revenue: 412300, margin: 16.8, credentials: 'OAuth ••••9f1a' },
+   405→  { id: 'SUP-006', name: 'Cricket Tickets India', status: 'Connected', lastSync: '8 min ago', bookings: 945, revenue: 142800, margin: 11.5, credentials: 'API Key ••••3e7c' },
+   406→]
+   407→
+   408→export const INVENTORY = [
+   409→  { id: 'INV-9841', event: 'UEFA Champions League Final', supplier: 'Prestige Sports Global', tier: 'VIP Suite', qty: 18, priority: 'High', status: 'Active' },
+   410→  { id: 'INV-9842', event: 'UEFA Champions League Final', supplier: 'Prestige Sports Global', tier: 'Cat 1', qty: 64, priority: 'High', status: 'Active' },
+   411→  { id: 'INV-9843', event: 'Monaco Grand Prix 2026', supplier: 'EuroEvents Direct', tier: 'Paddock Club', qty: 12, priority: 'Critical', status: 'Active' },
+   412→  { id: 'INV-9844', event: 'Coldplay London', supplier: 'Concert Live Worldwide', tier: 'Floor A', qty: 86, priority: 'Medium', status: 'Active' },
+   413→  { id: 'INV-9845', event: 'IPL Final 2026', supplier: 'Cricket Tickets India', tier: 'Corporate Box', qty: 44, priority: 'High', status: 'Active' },
+   414→  { id: 'INV-9846', event: 'Singapore GP', supplier: 'AsiaTix Network', tier: 'Stamford Grandstand', qty: 220, priority: 'Medium', status: 'Active' },
+   415→  { id: 'INV-9847', event: 'Adele Vegas', supplier: 'Hospitality Suites Ltd', tier: 'Floor B', qty: 0, priority: 'Low', status: 'Sold Out' },
+   416→  { id: 'INV-9848', event: 'El Clásico', supplier: 'EuroEvents Direct', tier: 'Cat 2', qty: 88, priority: 'Medium', status: 'Active' },
+   417→]
+   418→
+   419→export const PRICING_RULES = [
+   420→  { id: 'PR-001', supplier: 'Prestige Sports Global', markup: 22, minMargin: 12, campaign: 'Summer Sports', country: 'Global', currency: 'USD', partnerLevel: 'All' },
+   421→  { id: 'PR-002', supplier: 'EuroEvents Direct', markup: 18, minMargin: 10, campaign: '—', country: 'EU', currency: 'EUR', partnerLevel: 'Silver+' },
+   422→  { id: 'PR-003', supplier: 'AsiaTix Network', markup: 15, minMargin: 8, campaign: 'Asia Festival', country: 'APAC', currency: 'USD', partnerLevel: 'All' },
+   423→  { id: 'PR-004', supplier: 'Hospitality Suites Ltd', markup: 35, minMargin: 20, campaign: '—', country: 'Global', currency: 'USD', partnerLevel: 'Gold+' },
+   424→  { id: 'PR-005', supplier: 'Concert Live Worldwide', markup: 20, minMargin: 11, campaign: 'Tour 2026', country: 'Global', currency: 'USD', partnerLevel: 'All' },
+   425→]
+   426→
+   427→export const ADMIN_BOOKINGS: B2BBooking[] = [
+   428→  { id: 'BK-2026-00211', eventName: 'Monaco Grand Prix 2026', eventDate: '2026-05-24', venue: 'Circuit de Monaco', customer: 'James Whitmore', email: 'james@example.com', tier: 'Hospitality VIP', qty: 1, amount: 2400, currency: 'USD', status: 'Pending', bookingDate: '2026-02-18', paymentMethod: 'Visa', supplier: 'EuroEvents Direct', commission: 432, customerName: 'James Whitmore' },
+   429→  { id: 'BK-2026-00210', eventName: 'Coldplay London', eventDate: '2026-06-15', venue: 'O2 Arena', customer: 'Maria Chen', email: 'maria@example.com', tier: 'Premium', qty: 2, amount: 960, currency: 'USD', status: 'Confirmed', bookingDate: '2026-02-17', paymentMethod: 'Mastercard', supplier: 'Concert Live Worldwide', commission: 192, customerName: 'Maria Chen' },
+   430→  { id: 'BK-2026-00209', eventName: 'El Clásico', eventDate: '2026-10-25', venue: 'Santiago Bernabéu', customer: 'Ahmed Al-Farsi', email: 'ahmed@example.com', tier: 'Cat 1', qty: 3, amount: 1740, currency: 'USD', status: 'Confirmed', bookingDate: '2026-02-17', paymentMethod: 'Apple Pay', supplier: 'EuroEvents Direct', commission: 261, customerName: 'Ahmed Al-Farsi' },
+   431→  { id: 'BK-2026-00208', eventName: 'IPL Final 2026', eventDate: '2026-05-29', venue: 'Narendra Modi Stadium', customer: 'Priya Sharma', email: 'priya@example.com', tier: 'Corporate Box', qty: 4, amount: 1240, currency: 'USD', status: 'Confirmed', bookingDate: '2026-02-16', paymentMethod: 'UPI', supplier: 'Cricket Tickets India', commission: 124, customerName: 'Priya Sharma' },
+   432→  { id: 'BK-2026-00207', eventName: 'Singapore GP', eventDate: '2026-09-20', venue: 'Marina Bay', customer: 'Tan Wei Ming', email: 'tan@example.com', tier: 'Stamford', qty: 2, amount: 920, currency: 'USD', status: 'Refunded', bookingDate: '2026-02-15', paymentMethod: 'Visa', supplier: 'AsiaTix Network', commission: 0, customerName: 'Tan Wei Ming' },
+   433→  { id: 'BK-2026-00206', eventName: 'Adele Vegas', eventDate: '2026-07-18', venue: 'Caesars Palace', customer: 'Olivia Brown', email: 'olivia@example.com', tier: 'Floor', qty: 1, amount: 320, currency: 'USD', status: 'Cancelled', bookingDate: '2026-02-14', paymentMethod: 'Visa', supplier: 'Hospitality Suites Ltd', commission: 0, customerName: 'Olivia Brown' },
+   434→]
+   435→
+   436→export const CUSTOMERS = [
+   437→  { id: 'CUST-001', name: 'James Whitmore', email: 'james.whitmore@example.com', country: 'United Kingdom', bookings: 14, lifetimeValue: 18650, status: 'Active', membership: 'Gold', tickets: 2 },
+   438→  { id: 'CUST-002', name: 'Maria Chen', email: 'maria.chen@example.com', country: 'Singapore', bookings: 8, lifetimeValue: 9420, status: 'Active', membership: 'Silver', tickets: 1 },
+   439→  { id: 'CUST-003', name: 'Ahmed Al-Farsi', email: 'ahmed.alfarsi@example.com', country: 'United Arab Emirates', bookings: 22, lifetimeValue: 42800, status: 'Active', membership: 'Platinum', tickets: 0 },
+   440→  { id: 'CUST-004', name: 'Priya Sharma', email: 'priya.sharma@example.com', country: 'India', bookings: 5, lifetimeValue: 3240, status: 'Active', membership: 'Silver', tickets: 1 },
+   441→  { id: 'CUST-005', name: 'Tan Wei Ming', email: 'tan.weiming@example.com', country: 'Singapore', bookings: 3, lifetimeValue: 2180, status: 'Inactive', membership: 'Bronze', tickets: 0 },
+   442→  { id: 'CUST-006', name: 'Olivia Brown', email: 'olivia.brown@example.com', country: 'United States', bookings: 11, lifetimeValue: 12400, status: 'Active', membership: 'Gold', tickets: 0 },
+   443→]
+   444→
+   445→export const B2B_PARTNERS = [
+   446→  { id: 'PTNR-001', company: 'Global Sports Tours', contact: 'Sarah Mitchell', country: 'United Kingdom', tier: 'Platinum', creditLimit: 250000, used: 184200, status: 'Approved', points: 8420 },
+   447→  { id: 'PTNR-002', company: 'Dubai Events Co.', contact: 'Khalid Rahman', country: 'United Arab Emirates', tier: 'Gold', creditLimit: 120000, used: 68400, status: 'Approved', points: 4280 },
+   448→  { id: 'PTNR-003', company: 'Mumbai Live Entertainment', contact: 'Rajesh Kumar', country: 'India', tier: 'Silver', creditLimit: 60000, used: 12800, status: 'Approved', points: 1240 },
+   449→  { id: 'PTNR-004', company: 'Paris Premium Access', contact: 'Sophie Laurent', country: 'France', tier: 'Gold', creditLimit: 120000, used: 92100, status: 'Pending', points: 0 },
+   450→  { id: 'PTNR-005', company: 'Singapore Sports Hub', contact: 'Lim Chee Keong', country: 'Singapore', tier: 'Platinum', creditLimit: 250000, used: 210400, status: 'Approved', points: 9120 },
+   451→  { id: 'PTNR-006', company: 'Vegas VIP Experiences', contact: 'Michael Rodriguez', country: 'United States', tier: 'Silver', creditLimit: 60000, used: 42300, status: 'Suspended', points: 2100 },
+   452→]
+   453→
+   454→export const TRANSACTIONS = [
+   455→  { id: 'TXN-984712', booking: 'BK-2026-00211', customer: 'James Whitmore', amount: 2400, currency: 'USD', method: 'Visa •••• 4291', gateway: 'Stripe', status: 'Captured', date: '2026-02-18 14:32' },
+   456→  { id: 'TXN-984711', booking: 'BK-2026-00210', customer: 'Maria Chen', amount: 960, currency: 'USD', method: 'Mastercard •••• 8821', gateway: 'Stripe', status: 'Captured', date: '2026-02-17 11:08' },
+   457→  { id: 'TXN-984710', booking: 'BK-2026-00209', customer: 'Ahmed Al-Farsi', amount: 1740, currency: 'USD', method: 'Apple Pay', gateway: 'Adyen', status: 'Captured', date: '2026-02-17 09:42' },
+   458→  { id: 'TXN-984709', booking: 'BK-2026-00208', customer: 'Priya Sharma', amount: 1240, currency: 'USD', method: 'UPI', gateway: 'Razorpay', status: 'Captured', date: '2026-02-16 19:55' },
+   459→  { id: 'TXN-984708', booking: 'BK-2026-00207', customer: 'Tan Wei Ming', amount: 920, currency: 'USD', method: 'Visa •••• 1102', gateway: 'Stripe', status: 'Refunded', date: '2026-02-15 16:24' },
+   460→  { id: 'TXN-984707', booking: 'BK-2026-00206', customer: 'Olivia Brown', amount: 320, currency: 'USD', method: 'Visa •••• 7733', gateway: 'Stripe', status: 'Chargeback', date: '2026-02-14 13:11' },
+   461→]
+   462→
+   463→export const CMS_PAGES = [
+   464→  { id: 1, title: 'Homepage', slug: '/', status: 'Published', updated: '2 hr ago', author: 'Admin' },
+   465→  { id: 2, title: 'About Us', slug: '/about', status: 'Published', updated: '3 days ago', author: 'Admin' },
+   466→  { id: 3, title: 'Privacy Policy', slug: '/privacy', status: 'Published', updated: '1 week ago', author: 'Legal' },
+   467→  { id: 4, title: 'Terms & Conditions', slug: '/terms', status: 'Published', updated: '1 week ago', author: 'Legal' },
+   468→  { id: 5, title: 'Refund Policy', slug: '/refunds', status: 'Draft', updated: '5 days ago', author: 'Admin' },
+   469→  { id: 6, title: 'B2B Partnership Guide', slug: '/b2b-guide', status: 'Published', updated: '2 weeks ago', author: 'Marketing' },
+   470→]
+   471→
+   472→export const ORG_USERS = [
+   473→  { id: 1, name: 'Sarah Mitchell', email: 'sarah@globalsportstours.com', role: 'Admin', status: 'Active', lastLogin: '5 min ago' },
+   474→  { id: 2, name: 'David Chen', email: 'david@globalsportstours.com', role: 'Manager', status: 'Active', lastLogin: '2 hr ago' },
+   475→  { id: 3, name: 'Emma Wilson', email: 'emma@globalsportstours.com', role: 'Sales Executive', status: 'Active', lastLogin: '1 day ago' },
+   476→  { id: 4, name: 'Robert Taylor', email: 'robert@globalsportstours.com', role: 'Sales Executive', status: 'Inactive', lastLogin: '2 weeks ago' },
+   477→  { id: 5, name: 'Linda Park', email: 'linda@globalsportstours.com', role: 'Manager', status: 'Active', lastLogin: '4 hr ago' },
+   478→]
+   479→
+   480→export const REVENUE_CHART = [
+   481→  { month: 'Sep', revenue: 248000, bookings: 412 },
+   482→  { month: 'Oct', revenue: 312000, bookings: 528 },
+   483→  { month: 'Nov', revenue: 286000, bookings: 472 },
+   484→  { month: 'Dec', revenue: 392000, bookings: 642 },
+   485→  { month: 'Jan', revenue: 448000, bookings: 718 },
+   486→  { month: 'Feb', revenue: 524000, bookings: 824 },
+   487→]
+   488→
+   489→export const COUNTRY_DATA = [
+   490→  { country: 'United Kingdom', bookings: 1248, revenue: 412000 },
+   491→  { country: 'United Arab Emirates', bookings: 892, revenue: 386000 },
+   492→  { country: 'Singapore', bookings: 642, revenue: 248000 },
+   493→  { country: 'India', bookings: 1104, revenue: 184000 },
+   494→  { country: 'United States', bookings: 528, revenue: 268000 },
+   495→  { country: 'France', bookings: 318, revenue: 142000 },
+   496→]
+   497→
+   498→export const FAQS = [
+   499→  { q: 'How will I receive my tickets?', a: 'Tickets are delivered electronically via email within 24-48 hours of booking confirmation. For selected events, physical tickets or hospitality passes can be collected at the venue\'s VIP desk on the event day.' },
+   500→  { q: 'What is your cancellation policy?', a: 'Cancellation policies vary by event and supplier. Most bookings are non-refundable unless the event is cancelled or rescheduled. Premium hospitality packages may offer flexible terms — please review the specific terms during checkout or contact support.' },
+   501→  { q: 'Are seats allocated together?', a: 'Yes. All bookings of 2 or more tickets will be allocated as adjacent seating wherever possible. For hospitality packages, your group will be seated together in the same suite or box.' },
+   502→  { q: 'Can I transfer my ticket to someone else?', a: 'Ticket transfer policies vary by event. Many events allow name changes up to 48 hours before the event for a small fee. Hospitality packages are typically non-transferable. Please check the specific event\'s restrictions before booking.' },
+   503→  { q: 'What payment methods do you accept?', a: 'We accept all major credit and debit cards (Visa, Mastercard, American Express), UPI payments, net banking from major banks, and digital wallets including Apple Pay and Google Pay. Corporate clients can apply for invoice-based billing.' },
+   504→  { q: 'Is my payment secure?', a: 'All transactions are processed through PCI-DSS compliant payment gateways. We use 256-bit SSL encryption and never store your full card details on our servers. Your financial information is handled with the highest industry security standards.' },
+   505→]
+   506→
+   507→export function formatCurrency(amount: number, currency = 'USD') {
+   508→  return new Intl.NumberFormat('en-US', {
+   509→    style: 'currency',
+   510→    currency,
+   511→    maximumFractionDigits: 0,
+   512→  }).format(amount)
+   513→}
+   514→
+   515→export function formatDate(date: string) {
+   516→  return new Date(date).toLocaleDateString('en-US', {
+   517→    weekday: 'short',
+   518→    day: 'numeric',
+   519→    month: 'short',
+   520→    year: 'numeric',
+   521→  })
+   522→}
+   523→

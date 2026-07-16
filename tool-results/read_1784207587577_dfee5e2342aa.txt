@@ -1,0 +1,543 @@
+     1→'use client'
+     2→
+     3→import { useState, useCallback } from 'react'
+     4→import { useRouter } from '@/lib/router'
+     5→import { useStore } from '@/lib/store'
+     6→import { PublicHeader } from '@/components/layout/public-header'
+     7→import { PublicFooter } from '@/components/layout/public-footer'
+     8→import { Button } from '@/components/ui/button'
+     9→import { Card } from '@/components/ui/card'
+    10→import { Badge } from '@/components/ui/badge'
+    11→import { Separator } from '@/components/ui/separator'
+    12→import {
+    13→  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator
+    14→} from '@/components/ui/breadcrumb'
+    15→import {
+    16→  Accordion, AccordionContent, AccordionItem, AccordionTrigger
+    17→} from '@/components/ui/accordion'
+    18→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    19→import { StadiumSeatingMap, SelectedSeat } from '@/components/stadium-seating-map'
+    20→import { EVENTS, TICKET_TIERS, FAQS, formatCurrency, formatDate, supplierForEvent } from '@/lib/mock-data'
+    21→import { useCurrencyFormatter } from '@/components/currency-switcher'
+    22→import {
+    23→  MapPin, Calendar, Clock, Users, ShieldCheck, Truck, Ban, CheckCircle2,
+    24→  Star, ChevronRight, Info, Minus, Plus, Heart, Share2, Ticket as TicketIcon,
+    25→  ArrowLeft, Maximize2
+    26→} from 'lucide-react'
+    27→import { motion, AnimatePresence } from 'framer-motion'
+    28→import { useToast } from '@/hooks/use-toast'
+    29→
+    30→export function EventDetailPage() {
+    31→  const { route, navigate } = useRouter()
+    32→  const { toast } = useToast()
+    33→  const { wishlist, toggleWishlist, addToCart } = useStore()
+    34→  const fmt = useCurrencyFormatter()
+    35→  const eventId = (route.params?.eventId as string) || EVENTS[0].id
+    36→  const event = EVENTS.find(e => e.id === eventId) || EVENTS[0]
+    37→  const tiers = TICKET_TIERS[event.id] || TICKET_TIERS.default
+    38→  const supplier = supplierForEvent(event)
+    39→  const relatedEvents = EVENTS.filter(e => e.id !== event.id && e.category === event.category).slice(0, 3)
+    40→  const gallery = event.gallery || [event.image, event.image, event.image, event.image]
+    41→
+    42→  const [activeImage, setActiveImage] = useState(0)
+    43→  const [qty, setQty] = useState<Record<string, number>>({})
+    44→  const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([])
+    45→  const [showLightbox, setShowLightbox] = useState(false)
+    46→
+    47→  const inWishlist = wishlist.includes(event.id)
+    48→
+    49→  const getQty = (tierId: string) => qty[tierId] || 0
+    50→  const updateQty = (tierId: string, delta: number) => {
+    51→    setQty(prev => ({ ...prev, [tierId]: Math.max(0, (prev[tierId] || 0) + delta) }))
+    52→  }
+    53→
+    54→  const totalSelected = Object.values(qty).reduce((s, n) => s + n, 0)
+    55→  const totalAmount = tiers.reduce((sum, tier) => sum + (qty[tier.id] || 0) * tier.price, 0)
+    56→
+    57→  const handleSeatsChange = useCallback((seats: SelectedSeat[]) => {
+    58→    setSelectedSeats(seats)
+    59→  }, [])
+    60→
+    61→  const handleSeatsContinue = (seats: SelectedSeat[]) => {
+    62→    if (seats.length === 0) {
+    63→      toast({ title: 'No seats selected', description: 'Please pick at least one seat', variant: 'destructive' })
+    64→      return
+    65→    }
+    66→    addToCart({
+    67→      eventId: event.id,
+    68→      eventName: event.name,
+    69→      tierId: 'seats',
+    70→      tierName: `${seats.length} selected seats`,
+    71→      price: seats.reduce((s, x) => s + x.price, 0),
+    72→      currency: seats[0].currency,
+    73→      qty: seats.length,
+    74→      seats: seats.map(s => `R${s.row}S${s.seat}`),
+    75→      block: seats[0].blockName,
+    76→      eventDate: event.date,
+    77→      venue: event.venue,
+    78→    })
+    79→    navigate('checkout', { eventId: event.id, fromSeats: true, qty: seats.length })
+    80→  }
+    81→
+    82→  const handleBookNow = (tierId?: string) => {
+    83→    if (tierId) {
+    84→      const tier = tiers.find(t => t.id === tierId)!
+    85→      if (!qty[tierId]) setQty(prev => ({ ...prev, [tierId]: 1 }))
+    86→      addToCart({
+    87→        eventId: event.id,
+    88→        eventName: event.name,
+    89→        tierId,
+    90→        tierName: tier.name,
+    91→        price: tier.price,
+    92→        currency: tier.currency,
+    93→        qty: qty[tierId] || 1,
+    94→        eventDate: event.date,
+    95→        venue: event.venue,
+    96→      })
+    97→    } else if (selectedSeats.length > 0) {
+    98→      handleSeatsContinue(selectedSeats)
+    99→      return
+   100→    } else {
+   101→      tiers.forEach(t => {
+   102→        const q = qty[t.id] || 0
+   103→        if (q > 0) {
+   104→          addToCart({
+   105→            eventId: event.id,
+   106→            eventName: event.name,
+   107→            tierId: t.id,
+   108→            tierName: t.name,
+   109→            price: t.price,
+   110→            currency: t.currency,
+   111→            qty: q,
+   112→            eventDate: event.date,
+   113→            venue: event.venue,
+   114→          })
+   115→        }
+   116→      })
+   117→    }
+   118→    navigate('checkout', { eventId: event.id, qty: tierId ? (qty[tierId] || 1) : totalSelected })
+   119→  }
+   120→
+   121→  const handleShare = async () => {
+   122→    try {
+   123→      if (navigator.share) {
+   124→        await navigator.share({ title: event.name, text: event.description })
+   125→      } else {
+   126→        await navigator.clipboard.writeText(window.location.href)
+   127→        toast({ title: 'Link copied to clipboard' })
+   128→      }
+   129→    } catch {}
+   130→  }
+   131→
+   132→  return (
+   133→    <div className="flex min-h-screen flex-col">
+   134→      <PublicHeader />
+   135→
+   136→      <div className="flex-1">
+   137→        {/* Breadcrumb */}
+   138→        <div className="border-b border-border bg-muted/30">
+   139→          <div className="container mx-auto px-4 py-3 sm:px-6 lg:px-8">
+   140→            <Breadcrumb>
+   141→              <BreadcrumbList>
+   142→                <BreadcrumbItem>
+   143→                  <BreadcrumbLink onClick={() => navigate('home')} className="cursor-pointer">Home</BreadcrumbLink>
+   144→                </BreadcrumbItem>
+   145→                <BreadcrumbSeparator />
+   146→                <BreadcrumbItem>
+   147→                  <BreadcrumbLink onClick={() => navigate('events')} className="cursor-pointer">Events</BreadcrumbLink>
+   148→                </BreadcrumbItem>
+   149→                <BreadcrumbSeparator />
+   150→                <BreadcrumbItem>
+   151→                  <BreadcrumbLink onClick={() => navigate('events', { category: event.category })} className="cursor-pointer">
+   152→                    {event.category}
+   153→                  </BreadcrumbLink>
+   154→                </BreadcrumbItem>
+   155→                <BreadcrumbSeparator />
+   156→                <BreadcrumbItem>
+   157→                  <BreadcrumbPage>{event.name}</BreadcrumbPage>
+   158→                </BreadcrumbItem>
+   159→              </BreadcrumbList>
+   160→            </Breadcrumb>
+   161→          </div>
+   162→        </div>
+   163→
+   164→        {/* Image Gallery */}
+   165→        <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+   166→          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+   167→            <div className="lg:col-span-3">
+   168→              <motion.div
+   169→                key={activeImage}
+   170→                initial={{ opacity: 0.5, scale: 1.02 }}
+   171→                animate={{ opacity: 1, scale: 1 }}
+   172→                transition={{ duration: 0.4 }}
+   173→                className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted"
+   174→              >
+   175→                <img
+   176→                  src={gallery[activeImage]}
+   177→                  alt={`${event.name} — view ${activeImage + 1}`}
+   178→                  className="h-full w-full object-cover"
+   179→                />
+   180→                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+   181→                <button
+   182→                  onClick={() => setShowLightbox(true)}
+   183→                  className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-background/80 text-foreground backdrop-blur transition hover:bg-background"
+   184→                  aria-label="View fullscreen"
+   185→                >
+   186→                  <Maximize2 className="h-4 w-4" />
+   187→                </button>
+   188→                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+   189→                  <Badge className="mb-3 bg-accent text-accent-foreground hover:bg-accent">{event.category}</Badge>
+   190→                  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">{event.name}</h1>
+   191→                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+   192→                    <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{event.venue}, {event.city}</span>
+   193→                    <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDate(event.date)}</span>
+   194→                    <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{event.time}</span>
+   195→                  </div>
+   196→                </div>
+   197→              </motion.div>
+   198→
+   199→              {/* Thumbnail strip — real distinct gallery images */}
+   200→              <div className="mt-3 grid grid-cols-4 gap-3">
+   201→                {gallery.map((img, i) => (
+   202→                  <motion.button
+   203→                    key={i}
+   204→                    whileHover={{ y: -2 }}
+   205→                    whileTap={{ scale: 0.97 }}
+   206→                    onClick={() => setActiveImage(i)}
+   207→                    className={`relative aspect-video overflow-hidden rounded-lg border-2 transition-all ${i === activeImage ? 'border-accent shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
+   208→                  >
+   209→                    <img src={img} alt={`${event.name} — view ${i + 1}`} className="h-full w-full object-cover" />
+   210→                    <div className="absolute left-1 top-1 rounded bg-background/80 px-1.5 py-0.5 text-[9px] font-medium backdrop-blur">
+   211→                      View {i + 1}
+   212→                    </div>
+   213→                  </motion.button>
+   214→                ))}
+   215→              </div>
+   216→            </div>
+   217→
+   218→            {/* Side card with key info */}
+   219→            <div className="lg:col-span-1">
+   220→              <Card className="sticky top-20 p-5">
+   221→                <div className="flex items-start justify-between">
+   222→                  <div>
+   223→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Starting from</div>
+   224→                    <div className="text-2xl font-bold">{fmt(event.startingPrice, event.currency)}</div>
+   225→                  </div>
+   226→                  <div className="flex gap-1">
+   227→                    <Button
+   228→                      variant="outline"
+   229→                      size="icon"
+   230→                      className="h-8 w-8"
+   231→                      onClick={() => { toggleWishlist(event.id); toast({ title: inWishlist ? 'Removed from wishlist' : 'Added to wishlist' }) }}
+   232→                    >
+   233→                      <Heart className={`h-4 w-4 ${inWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+   234→                    </Button>
+   235→                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleShare}>
+   236→                      <Share2 className="h-4 w-4" />
+   237→                    </Button>
+   238→                  </div>
+   239→                </div>
+   240→
+   241→                <div className="mt-4 space-y-3 text-sm">
+   242→                  <div className="flex items-start gap-2">
+   243→                    <Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
+   244→                    <div>
+   245→                      <div className="font-medium">{formatDate(event.date)}</div>
+   246→                      <div className="text-xs text-muted-foreground">{event.time} local time</div>
+   247→                    </div>
+   248→                  </div>
+   249→                  <div className="flex items-start gap-2">
+   250→                    <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+   251→                    <div>
+   252→                      <div className="font-medium">{event.venue}</div>
+   253→                      <div className="text-xs text-muted-foreground">{event.city}, {event.country}</div>
+   254→                    </div>
+   255→                  </div>
+   256→                  <div className="flex items-start gap-2">
+   257→                    <Users className="mt-0.5 h-4 w-4 text-muted-foreground" />
+   258→                    <div>
+   259→                      <div className="font-medium">{event.ticketsAvailable} tickets available</div>
+   260→                      <div className="text-xs text-muted-foreground">Across {tiers.length} tiers</div>
+   261→                    </div>
+   262→                  </div>
+   263→                </div>
+   264→
+   265→                {/* Supplier / Smart Routing indicator */}
+   266→                <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+   267→                  <div className="flex items-center gap-2">
+   268→                    <span className="grid h-6 w-6 place-items-center rounded-md bg-foreground text-background text-[10px] font-bold">
+   269→                      {supplier.id.replace('SUP-', '')}
+   270→                    </span>
+   271→                    <div className="flex-1 min-w-0">
+   272→                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fulfilled by</div>
+   273→                      <div className="truncate text-xs font-medium">{supplier.name}</div>
+   274→                    </div>
+   275→                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 text-[10px]">
+   276→                      {supplier.primaryCategoryLabel}
+   277→                    </Badge>
+   278→                  </div>
+   279→                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+   280→                    <Truck className="h-3 w-3" />
+   281→                    Smart-routed via category mapping
+   282→                  </div>
+   283→                </div>
+   284→
+   285→                <Separator className="my-4" />
+   286→
+   287→                <div className="space-y-2 text-xs text-muted-foreground">
+   288→                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> 100% official tickets</div>
+   289→                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Instant confirmation</div>
+   290→                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Secure payments</div>
+   291→                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Seats together</div>
+   292→                </div>
+   293→
+   294→                <Button className="mt-4 w-full gap-2" onClick={() => {
+   295→                  document.getElementById('seating-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+   296→                }}>
+   297→                  Select your seats
+   298→                  <ChevronRight className="h-4 w-4" />
+   299→                </Button>
+   300→              </Card>
+   301→            </div>
+   302→          </div>
+   303→
+   304→          {/* Tabs: About / Seating Map / Tickets / FAQs / Related */}
+   305→          <div className="mt-10">
+   306→            <Tabs defaultValue="about">
+   307→              <TabsList className="w-full justify-start overflow-x-auto">
+   308→                <TabsTrigger value="about">About Event</TabsTrigger>
+   309→                <TabsTrigger value="seating">Seating Map</TabsTrigger>
+   310→                <TabsTrigger value="tickets">Ticket Tiers</TabsTrigger>
+   311→                <TabsTrigger value="faqs">FAQs</TabsTrigger>
+   312→                <TabsTrigger value="related">Related Events</TabsTrigger>
+   313→              </TabsList>
+   314→
+   315→              <TabsContent value="about" className="mt-6">
+   316→                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   317→                  <Card className="p-6 lg:col-span-2">
+   318→                    <h2 className="text-lg font-semibold">About this event</h2>
+   319→                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{event.description}</p>
+   320→                    <Separator className="my-5" />
+   321→                    <h3 className="text-sm font-semibold">What&apos;s included</h3>
+   322→                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+   323→                      {[
+   324→                        { icon: Users, label: 'Seats together', desc: 'Your group will be seated adjacent wherever possible' },
+   325→                        { icon: Truck, label: 'Delivery method', desc: 'E-tickets delivered 24-48h before the event' },
+   326→                        { icon: Ban, label: 'Cancellation policy', desc: 'Non-refundable. Flexible terms on hospitality.' },
+   327→                        { icon: Info, label: 'Restrictions', desc: 'Age 5+. No professional cameras. ID required.' },
+   328→                      ].map((item) => {
+   329→                        const Icon = item.icon
+   330→                        return (
+   331→                          <div key={item.label} className="flex items-start gap-3 rounded-lg border border-border p-3">
+   332→                            <Icon className="mt-0.5 h-4 w-4 text-accent-foreground" />
+   333→                            <div>
+   334→                              <div className="text-sm font-medium">{item.label}</div>
+   335→                              <div className="text-xs text-muted-foreground">{item.desc}</div>
+   336→                            </div>
+   337→                          </div>
+   338→                        )
+   339→                      })}
+   340→                    </div>
+   341→                  </Card>
+   342→
+   343→                  <Card className="p-6">
+   344→                    <h3 className="text-sm font-semibold">Venue information</h3>
+   345→                    <div className="mt-3 aspect-video overflow-hidden rounded-lg bg-muted">
+   346→                      <img src={gallery[1] || event.image} alt={event.venue} className="h-full w-full object-cover" />
+   347→                    </div>
+   348→                    <div className="mt-3 space-y-2 text-sm">
+   349→                      <div className="font-medium">{event.venue}</div>
+   350→                      <div className="text-muted-foreground">{event.city}, {event.country}</div>
+   351→                      <div className="text-xs text-muted-foreground">Capacity: 90,000 · Opened: 1923 · Renovated: 2007</div>
+   352→                    </div>
+   353→                    <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={() => toast({ title: 'Map opened', description: 'Showing venue on Google Maps' })}>
+   354→                      <MapPin className="h-4 w-4" />
+   355→                      View on map
+   356→                    </Button>
+   357→                  </Card>
+   358→                </div>
+   359→              </TabsContent>
+   360→
+   361→              <TabsContent value="seating" className="mt-6" id="seating-map">
+   362→                <StadiumSeatingMap
+   363→                  onSelect={handleSeatsChange}
+   364→                  onContinue={handleSeatsContinue}
+   365→                />
+   366→              </TabsContent>
+   367→
+   368→              <TabsContent value="tickets" className="mt-6">
+   369→                <div className="space-y-4">
+   370→                  {tiers.map((tier) => (
+   371→                    <Card key={tier.id} className="overflow-hidden p-0">
+   372→                      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+   373→                        <div className="flex-1">
+   374→                          <div className="flex items-center gap-2">
+   375→                            <h3 className="text-lg font-semibold">{tier.name}</h3>
+   376→                            {tier.badge && (
+   377→                              <Badge className="bg-accent text-accent-foreground hover:bg-accent">{tier.badge}</Badge>
+   378→                            )}
+   379→                          </div>
+   380→                          <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+   381→                            {tier.features.map((f) => (
+   382→                              <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   383→                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+   384→                                {f}
+   385→                              </li>
+   386→                            ))}
+   387→                          </ul>
+   388→                          <p className="mt-2 text-xs text-muted-foreground">
+   389→                            <span className="font-medium text-amber-600">{tier.available} tickets remaining</span>
+   390→                          </p>
+   391→                        </div>
+   392→
+   393→                        <div className="flex flex-col items-end gap-3 sm:w-48">
+   394→                          <div className="text-right">
+   395→                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Per ticket</div>
+   396→                            <div className="text-2xl font-bold">{fmt(tier.price, tier.currency)}</div>
+   397→                          </div>
+   398→                          <div className="flex items-center gap-2">
+   399→                            <Button
+   400→                              variant="outline"
+   401→                              size="icon"
+   402→                              className="h-8 w-8"
+   403→                              onClick={() => updateQty(tier.id, -1)}
+   404→                              disabled={getQty(tier.id) === 0}
+   405→                            >
+   406→                              <Minus className="h-3.5 w-3.5" />
+   407→                            </Button>
+   408→                            <span className="w-8 text-center text-sm font-medium">{getQty(tier.id)}</span>
+   409→                            <Button
+   410→                              variant="outline"
+   411→                              size="icon"
+   412→                              className="h-8 w-8"
+   413→                              onClick={() => updateQty(tier.id, 1)}
+   414→                              disabled={getQty(tier.id) >= 8}
+   415→                            >
+   416→                              <Plus className="h-3.5 w-3.5" />
+   417→                            </Button>
+   418→                          </div>
+   419→                          <Button
+   420→                            size="sm"
+   421→                            className="w-full"
+   422→                            onClick={() => handleBookNow(tier.id)}
+   423→                            disabled={tier.available === 0}
+   424→                          >
+   425→                            {tier.available === 0 ? 'Sold out' : 'Book now'}
+   426→                          </Button>
+   427→                        </div>
+   428→                      </div>
+   429→                    </Card>
+   430→                  ))}
+   431→                </div>
+   432→              </TabsContent>
+   433→
+   434→              <TabsContent value="faqs" className="mt-6">
+   435→                <Card className="p-6">
+   436→                  <h2 className="mb-4 text-lg font-semibold">Frequently Asked Questions</h2>
+   437→                  <Accordion type="single" collapsible className="w-full">
+   438→                    {FAQS.map((faq, i) => (
+   439→                      <AccordionItem key={i} value={`item-${i}`}>
+   440→                        <AccordionTrigger className="text-left">{faq.q}</AccordionTrigger>
+   441→                        <AccordionContent className="text-muted-foreground">{faq.a}</AccordionContent>
+   442→                      </AccordionItem>
+   443→                    ))}
+   444→                  </Accordion>
+   445→                </Card>
+   446→              </TabsContent>
+   447→
+   448→              <TabsContent value="related" className="mt-6">
+   449→                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   450→                  {relatedEvents.map((rel) => (
+   451→                    <Card
+   452→                      key={rel.id}
+   453→                      className="group cursor-pointer overflow-hidden p-0 transition-all hover:-translate-y-1 hover:shadow-lg"
+   454→                      onClick={() => { navigate('event-detail', { eventId: rel.id }); setActiveImage(0) }}
+   455→                    >
+   456→                      <div className="relative aspect-[4/3] overflow-hidden">
+   457→                        <img src={rel.image} alt={rel.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+   458→                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   459→                        <div className="absolute bottom-3 left-3 right-3 text-white">
+   460→                          <div className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />{rel.city}</div>
+   461→                          <div className="mt-1 line-clamp-1 text-sm font-semibold">{rel.name}</div>
+   462→                        </div>
+   463→                      </div>
+   464→                      <div className="p-4">
+   465→                        <div className="flex items-end justify-between">
+   466→                          <div>
+   467→                            <div className="text-[10px] uppercase text-muted-foreground">From</div>
+   468→                            <div className="text-lg font-semibold">{fmt(rel.startingPrice, rel.currency)}</div>
+   469→                          </div>
+   470→                          <Star className="h-4 w-4 fill-accent text-accent" />
+   471→                        </div>
+   472→                      </div>
+   473→                    </Card>
+   474→                  ))}
+   475→                </div>
+   476→              </TabsContent>
+   477→            </Tabs>
+   478→          </div>
+   479→        </div>
+   480→      </div>
+   481→
+   482→      {/* Sticky bottom booking bar */}
+   483→      <AnimatePresence>
+   484→        {(totalSelected > 0 || selectedSeats.length > 0) && (
+   485→          <motion.div
+   486→            initial={{ y: 80, opacity: 0 }}
+   487→            animate={{ y: 0, opacity: 1 }}
+   488→            exit={{ y: 80, opacity: 0 }}
+   489→            className="sticky bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8"
+   490→          >
+   491→            <div className="container mx-auto flex items-center justify-between gap-4">
+   492→              <div>
+   493→                <div className="text-xs text-muted-foreground">
+   494→                  {selectedSeats.length > 0
+   495→                    ? `${selectedSeats.length} seats selected`
+   496→                    : `${totalSelected} ticket${totalSelected > 1 ? 's' : ''} selected`}
+   497→                </div>
+   498→                <div className="text-lg font-bold">
+   499→                  {fmt(selectedSeats.length > 0 ? selectedSeats.reduce((s, x) => s + x.price, 0) : totalAmount, event.currency)}{' '}
+   500→                  <span className="text-xs font-normal text-muted-foreground">total</span>
+   501→                </div>
+   502→              </div>
+   503→              <Button onClick={() => handleBookNow()} className="gap-2">
+   504→                Continue to checkout
+   505→                <ChevronRight className="h-4 w-4" />
+   506→              </Button>
+   507→            </div>
+   508→          </motion.div>
+   509→        )}
+   510→      </AnimatePresence>
+   511→
+   512→      {/* Lightbox */}
+   513→      <AnimatePresence>
+   514→        {showLightbox && (
+   515→          <motion.div
+   516→            initial={{ opacity: 0 }}
+   517→            animate={{ opacity: 1 }}
+   518→            exit={{ opacity: 0 }}
+   519→            onClick={() => setShowLightbox(false)}
+   520→            className="fixed inset-0 z-[100] grid place-items-center bg-black/90 p-4 backdrop-blur"
+   521→          >
+   522→            <button
+   523→              onClick={() => setShowLightbox(false)}
+   524→              className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+   525→            >
+   526→              ✕
+   527→            </button>
+   528→            <motion.img
+   529→              initial={{ scale: 0.9 }}
+   530→              animate={{ scale: 1 }}
+   531→              src={gallery[activeImage]}
+   532→              alt={event.name}
+   533→              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+   534→            />
+   535→          </motion.div>
+   536→        )}
+   537→      </AnimatePresence>
+   538→
+   539→      <PublicFooter />
+   540→    </div>
+   541→  )
+   542→}
+   543→
