@@ -1,0 +1,1144 @@
+     1→'use client'
+     2→
+     3→import { useState } from 'react'
+     4→import { useRouter, RouteName } from '@/lib/router'
+     5→import { DashboardShell, SidebarGroup } from '@/components/layout/dashboard-shell'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Card } from '@/components/ui/card'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { Input } from '@/components/ui/input'
+    10→import { Label } from '@/components/ui/label'
+    11→import { Separator } from '@/components/ui/separator'
+    12→import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    14→import {
+    15→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+    16→} from '@/components/ui/dialog'
+    17→import { useStore } from '@/lib/store'
+    18→import { EVENTS, UPCOMING_BOOKINGS, PAST_BOOKINGS, formatCurrency, formatDate } from '@/lib/mock-data'
+    19→import { useCurrencyFormatter } from '@/components/currency-switcher'
+    20→import {
+    21→  LayoutDashboard, Ticket, FileText, LifeBuoy, User, LogOut, Bell,
+    22→  Calendar, TrendingUp, CreditCard, CheckCircle2, Clock, ArrowRight,
+    23→  ChevronRight, Star, Heart, MapPin, Mail, Globe, Save, MessageSquare,
+    24→  AlertCircle, Download, ShoppingBag, Gift, Sparkles, Utensils,
+    25→  Plus, ArrowDownLeft, ArrowUpRight, X, Wine
+    26→} from 'lucide-react'
+    27→import { motion, AnimatePresence } from 'framer-motion'
+    28→
+    29→const groups: SidebarGroup[] = [
+    30→  {
+    31→    items: [
+    32→      { label: 'Dashboard', route: 'customer-dashboard', icon: LayoutDashboard },
+    33→      { label: 'My Bookings', route: 'customer-dashboard', icon: Ticket },
+    34→      { label: 'Rewards Wallet', route: 'customer-dashboard', icon: Gift },
+    35→      { label: 'Membership Cards', route: 'customer-dashboard', icon: CreditCard },
+    36→      { label: 'Restaurants', route: 'customer-dashboard', icon: Utensils },
+    37→      { label: 'Invoices', route: 'customer-dashboard', icon: FileText },
+    38→      { label: 'Wishlist', route: 'customer-dashboard', icon: Heart },
+    39→    ],
+    40→  },
+    41→  {
+    42→    label: 'Account',
+    43→    items: [
+    44→      { label: 'Support', route: 'customer-dashboard', icon: LifeBuoy },
+    45→      { label: 'Profile', route: 'customer-dashboard', icon: User },
+    46→      { label: 'Logout', route: 'home', icon: LogOut },
+    47→    ],
+    48→  },
+    49→]
+    50→
+    51→export function CustomerDashboardPage() {
+    52→  const { navigate, route } = useRouter()
+    53→  const {
+    54→    user, wishlist, toggleWishlist, logout, addToast,
+    55→    rewardsBalance, rewardsHistory, redeemRewardPoints,
+    56→    membershipCards, ownedCardCodes, grantMembershipCard,
+    57→    restaurants, restaurantBookings, addRestaurantBooking, cancelRestaurantBooking,
+    58→  } = useStore()
+    59→  const fmt = useCurrencyFormatter()
+    60→  const initialTab = (route.params?.tab as string) || 'dashboard'
+    61→  const [activeTab, setActiveTab] = useState(initialTab)
+    62→  const [profileOpen, setProfileOpen] = useState(false)
+    63→  const [grantCode, setGrantCode] = useState('')
+    64→  const [grantOpen, setGrantOpen] = useState(false)
+    65→  const [selectedRestaurant, setSelectedRestaurant] = useState<typeof restaurants[0] | null>(null)
+    66→  const [bookingForm, setBookingForm] = useState({ date: '', pax: 2, time: '19:30', cardCode: '' })
+    67→  const [profile, setProfile] = useState({
+    68→    name: user?.name || 'James Whitmore',
+    69→    email: user?.email || 'james.whitmore@example.com',
+    70→    phone: '+44 20 7946 0958',
+    71→    country: 'United Kingdom',
+    72→    city: 'London',
+    73→    address: '42 Mayfair Lane, London W1K 5AB',
+    74→  })
+    75→
+    76→  // If not logged in, prompt to login
+    77→  if (!user) {
+    78→    return (
+    79→      <div className="grid min-h-screen place-items-center bg-muted/30 p-4">
+    80→        <Card className="max-w-md p-8 text-center">
+    81→          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-500/15">
+    82→            <User className="h-8 w-8 text-amber-600" />
+    83→          </div>
+    84→          <h2 className="mt-4 text-2xl font-bold tracking-tight">Sign in required</h2>
+    85→          <p className="mt-2 text-sm text-muted-foreground">
+    86→            Please sign in to access your customer dashboard, view bookings, manage your wishlist, and update your profile.
+    87→          </p>
+    88→          <div className="mt-6 flex gap-3">
+    89→            <Button variant="outline" className="flex-1" onClick={() => navigate('home')}>Return Home</Button>
+    90→            <Button className="flex-1 gap-2" onClick={() => navigate('login')}>
+    91→              Sign in
+    92→              <ArrowRight className="h-4 w-4" />
+    93→            </Button>
+    94→          </div>
+    95→          <p className="mt-4 text-xs text-muted-foreground">
+    96→            New here?{' '}
+    97→            <button onClick={() => navigate('register')} className="font-medium text-foreground hover:underline">
+    98→              Create an account
+    99→            </button>
+   100→          </p>
+   101→        </Card>
+   102→      </div>
+   103→    )
+   104→  }
+   105→
+   106→  const wishlistEvents = EVENTS.filter(e => wishlist.includes(e.id))
+   107→  const ownedCards = membershipCards.filter(c => ownedCardCodes.includes(c.code))
+   108→
+   109→  const handleLogout = () => {
+   110→    logout()
+   111→    navigate('home')
+   112→  }
+   113→
+   114→  const saveProfile = (e: React.FormEvent) => {
+   115→    e.preventDefault()
+   116→    addToast({ title: 'Profile updated', description: 'Your changes have been saved', type: 'success' })
+   117→    setProfileOpen(false)
+   118→  }
+   119→
+   120→  const handleGrant = (e: React.FormEvent) => {
+   121→    e.preventDefault()
+   122→    grantMembershipCard(grantCode.toUpperCase())
+   123→    setGrantCode('')
+   124→    setGrantOpen(false)
+   125→  }
+   126→
+   127→  const handleRestaurantBooking = (e: React.FormEvent) => {
+   128→    e.preventDefault()
+   129→    if (!selectedRestaurant) return
+   130→    const baseAmount = selectedRestaurant.priceForTwo * Math.ceil(bookingForm.pax / 2)
+   131→    const card = bookingForm.cardCode ? membershipCards.find(c => c.code === bookingForm.cardCode) : null
+   132→    const discount = card
+   133→      ? Math.min(Math.round(baseAmount * card.discountPct / 100), card.maxDiscount ?? Infinity)
+   134→      : 0
+   135→    const finalAmount = Math.max(0, baseAmount - discount)
+   136→    addRestaurantBooking({
+   137→      restaurantId: selectedRestaurant.id,
+   138→      restaurantName: selectedRestaurant.name,
+   139→      date: bookingForm.date,
+   140→      pax: bookingForm.pax,
+   141→      amount: finalAmount,
+   142→      currency: 'USD',
+   143→      cardApplied: bookingForm.cardCode || undefined,
+   144→    })
+   145→    setSelectedRestaurant(null)
+   146→    setBookingForm({ date: '', pax: 2, time: '19:30', cardCode: '' })
+   147→  }
+   148→
+   149→  return (
+   150→    <DashboardShell
+   151→      brand="DS Experiences"
+   152→      brandSubtitle="Customer Portal"
+   153→      groups={groups}
+   154→      currentRoute="customer-dashboard"
+   155→      onNavigate={(r: RouteName) => {
+   156→        if (r === 'home') handleLogout()
+   157→        else navigate(r)
+   158→      }}
+   159→      onExit={() => navigate('home')}
+   160→      topBarTitle="My Dashboard"
+   161→      topBarRight={
+   162→        <>
+   163→          <Button variant="ghost" size="icon" className="relative">
+   164→            <Bell className="h-4 w-4" />
+   165→            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
+   166→          </Button>
+   167→          <Avatar className="h-8 w-8">
+   168→            <AvatarImage src={user.avatar} />
+   169→            <AvatarFallback>{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   170→          </Avatar>
+   171→        </>
+   172→      }
+   173→    >
+   174→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   175→        <TabsList className="mb-6 w-full justify-start overflow-x-auto">
+   176→          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+   177→          <TabsTrigger value="bookings">My Bookings</TabsTrigger>
+   178→          <TabsTrigger value="rewards">
+   179→            <Gift className="mr-1 h-3.5 w-3.5" />
+   180→            Rewards Wallet
+   181→          </TabsTrigger>
+   182→          <TabsTrigger value="cards">
+   183→            <CreditCard className="mr-1 h-3.5 w-3.5" />
+   184→            Membership Cards
+   185→          </TabsTrigger>
+   186→          <TabsTrigger value="restaurants">
+   187→            <Utensils className="mr-1 h-3.5 w-3.5" />
+   188→            Restaurants
+   189→          </TabsTrigger>
+   190→          <TabsTrigger value="wishlist">Wishlist ({wishlist.length})</TabsTrigger>
+   191→          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+   192→          <TabsTrigger value="support">Support</TabsTrigger>
+   193→          <TabsTrigger value="profile">Profile</TabsTrigger>
+   194→        </TabsList>
+   195→
+   196→        {/* DASHBOARD TAB */}
+   197→        <TabsContent value="dashboard" className="space-y-6">
+   198→          {/* Welcome banner */}
+   199→          <motion.div
+   200→            initial={{ opacity: 0, y: 10 }}
+   201→            animate={{ opacity: 1, y: 0 }}
+   202→            className="flex flex-col items-start justify-between gap-4 rounded-xl bg-foreground p-6 text-background sm:flex-row sm:items-center"
+   203→          >
+   204→            <div className="flex items-center gap-4">
+   205→              <Avatar className="h-14 w-14 border-2 border-accent">
+   206→                <AvatarImage src={user.avatar} />
+   207→                <AvatarFallback>{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   208→              </Avatar>
+   209→              <div>
+   210→                <h2 className="text-xl font-semibold tracking-tight">Welcome back, {user.name.split(' ')[0]}</h2>
+   211→                <p className="text-sm text-background/70">You have 3 upcoming events and {user.membership || 'Gold'} membership status.</p>
+   212→              </div>
+   213→            </div>
+   214→            <div className="flex items-center gap-2 rounded-full bg-background/10 px-4 py-2 backdrop-blur-md">
+   215→              <Star className="h-4 w-4 fill-accent text-accent" />
+   216→              <span className="text-sm font-medium">{user.membership || 'Gold'} Member</span>
+   217→            </div>
+   218→          </motion.div>
+   219→
+   220→          {/* Stats cards */}
+   221→          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+   222→            {[
+   223→              { label: 'Upcoming Bookings', value: '3', icon: Calendar, accent: 'text-emerald-600', change: '+1 this month' },
+   224→              { label: 'Past Bookings', value: '14', icon: Ticket, accent: 'text-muted-foreground', change: '+2 last quarter' },
+   225→              { label: 'Total Spent', value: fmt(18650), icon: CreditCard, accent: 'text-muted-foreground', change: 'Lifetime value' },
+   226→              { label: 'Rewards Balance', value: `${rewardsBalance.toLocaleString()} pts`, icon: Gift, accent: 'text-violet-600', change: `≈ ${fmt(rewardsBalance)} value` },
+   227→            ].map((stat) => {
+   228→              const Icon = stat.icon
+   229→              return (
+   230→                <Card key={stat.label} className="p-5">
+   231→                  <div className="flex items-start justify-between">
+   232→                    <div>
+   233→                      <div className="text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</div>
+   234→                      <div className="mt-1 text-2xl font-bold">{stat.value}</div>
+   235→                      <div className="mt-1 text-xs text-muted-foreground">{stat.change}</div>
+   236→                    </div>
+   237→                    <div className="grid h-9 w-9 place-items-center rounded-md bg-muted">
+   238→                      <Icon className={`h-4 w-4 ${stat.accent}`} />
+   239→                    </div>
+   240→                  </div>
+   241→                </Card>
+   242→              )
+   243→            })}
+   244→          </div>
+   245→
+   246→          {/* Upcoming & Side */}
+   247→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   248→            <Card className="lg:col-span-2">
+   249→              <div className="flex items-center justify-between border-b border-border p-5">
+   250→                <h3 className="font-semibold">Upcoming Bookings</h3>
+   251→                <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => setActiveTab('bookings')}>
+   252→                  View all <ChevronRight className="h-3.5 w-3.5" />
+   253→                </Button>
+   254→              </div>
+   255→              <div className="divide-y divide-border">
+   256→                {UPCOMING_BOOKINGS.map((booking) => (
+   257→                  <div
+   258→                    key={booking.id}
+   259→                    className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-muted/30"
+   260→                    onClick={() => navigate('booking-details', { bookingId: booking.id })}
+   261→                  >
+   262→                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-accent/15">
+   263→                      <Calendar className="h-5 w-5 text-accent-foreground" />
+   264→                    </div>
+   265→                    <div className="flex-1 min-w-0">
+   266→                      <div className="flex items-center gap-2">
+   267→                        <h4 className="truncate font-medium">{booking.eventName}</h4>
+   268→                        {booking.status === 'Confirmed' ? (
+   269→                          <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">
+   270→                            <CheckCircle2 className="mr-1 h-3 w-3" />Confirmed
+   271→                          </Badge>
+   272→                        ) : (
+   273→                          <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
+   274→                            <Clock className="mr-1 h-3 w-3" />Pending
+   275→                          </Badge>
+   276→                        )}
+   277→                      </div>
+   278→                      <div className="mt-0.5 text-xs text-muted-foreground">
+   279→                        {booking.venue} · {formatDate(booking.eventDate)}
+   280→                      </div>
+   281→                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+   282→                        <span>{booking.tier} × {booking.qty}</span>
+   283→                        <span>·</span>
+   284→                        <span className="font-mono">{booking.id}</span>
+   285→                      </div>
+   286→                    </div>
+   287→                    <div className="text-right">
+   288→                      <div className="font-semibold">{formatCurrency(booking.amount, booking.currency)}</div>
+   289→                      <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs">
+   290→                        Details
+   291→                        <ArrowRight className="ml-1 h-3 w-3" />
+   292→                      </Button>
+   293→                    </div>
+   294→                  </div>
+   295→                ))}
+   296→              </div>
+   297→            </Card>
+   298→
+   299→            <div className="space-y-6">
+   300→              <Card className="p-5">
+   301→                <h3 className="mb-4 font-semibold">Ticket Status</h3>
+   302→                <div className="space-y-3">
+   303→                  {[
+   304→                    { label: 'E-tickets delivered', value: 2, color: 'bg-emerald-500' },
+   305→                    { label: 'Pending delivery', value: 1, color: 'bg-amber-500' },
+   306→                    { label: 'Hospitality pending', value: 1, color: 'bg-purple-500' },
+   307→                  ].map((s) => (
+   308→                    <div key={s.label}>
+   309→                      <div className="flex items-center justify-between text-xs">
+   310→                        <span className="text-muted-foreground">{s.label}</span>
+   311→                        <span className="font-medium">{s.value}</span>
+   312→                      </div>
+   313→                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+   314→                        <div className={`h-full ${s.color}`} style={{ width: `${(s.value / 4) * 100}%` }} />
+   315→                      </div>
+   316→                    </div>
+   317→                  ))}
+   318→                </div>
+   319→              </Card>
+   320→
+   321→              <Card className="p-5">
+   322→                <h3 className="mb-4 flex items-center gap-2 font-semibold">
+   323→                  <Bell className="h-4 w-4" />
+   324→                  Notifications
+   325→                </h3>
+   326→                <div className="space-y-3 text-sm">
+   327→                  <div className="rounded-lg border-l-2 border-emerald-500 bg-emerald-500/5 px-3 py-2">
+   328→                    <div className="text-xs font-medium">Your Coldplay tickets are ready</div>
+   329→                    <div className="mt-0.5 text-[10px] text-muted-foreground">2 hours ago</div>
+   330→                  </div>
+   331→                  <div className="rounded-lg border-l-2 border-accent bg-accent/5 px-3 py-2">
+   332→                    <div className="text-xs font-medium">Hospitality concierge assigned</div>
+   333→                    <div className="mt-0.5 text-[10px] text-muted-foreground">1 day ago</div>
+   334→                  </div>
+   335→                  <div className="rounded-lg border-l-2 border-muted-foreground bg-muted/30 px-3 py-2">
+   336→                    <div className="text-xs font-medium">Earn 158 more points for Platinum</div>
+   337→                    <div className="mt-0.5 text-[10px] text-muted-foreground">3 days ago</div>
+   338→                  </div>
+   339→                </div>
+   340→              </Card>
+   341→            </div>
+   342→          </div>
+   343→
+   344→          {/* Past bookings */}
+   345→          <Card>
+   346→            <div className="flex items-center justify-between border-b border-border p-5">
+   347→              <h3 className="font-semibold">Past Bookings</h3>
+   348→              <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => addToast({ title: 'History exported', description: 'Booking history CSV downloaded' })}>
+   349→                Export history <Download className="h-3.5 w-3.5" />
+   350→              </Button>
+   351→            </div>
+   352→            <div className="overflow-x-auto">
+   353→              <table className="w-full text-sm">
+   354→                <thead>
+   355→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   356→                    <th className="px-5 py-3 font-medium">Booking ID</th>
+   357→                    <th className="px-5 py-3 font-medium">Event</th>
+   358→                    <th className="px-5 py-3 font-medium">Date</th>
+   359→                    <th className="px-5 py-3 font-medium">Tier</th>
+   360→                    <th className="px-5 py-3 font-medium">Amount</th>
+   361→                    <th className="px-5 py-3 font-medium">Status</th>
+   362→                  </tr>
+   363→                </thead>
+   364→                <tbody className="divide-y divide-border">
+   365→                  {PAST_BOOKINGS.map((b) => (
+   366→                    <tr
+   367→                      key={b.id}
+   368→                      className="cursor-pointer transition-colors hover:bg-muted/30"
+   369→                      onClick={() => navigate('booking-details', { bookingId: b.id })}
+   370→                    >
+   371→                      <td className="px-5 py-3 font-mono text-xs">{b.id}</td>
+   372→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   373→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.eventDate)}</td>
+   374→                      <td className="px-5 py-3 text-muted-foreground">{b.tier} × {b.qty}</td>
+   375→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   376→                      <td className="px-5 py-3">
+   377→                        {b.status === 'Refunded' ? (
+   378→                          <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 hover:bg-rose-500/15">{b.status}</Badge>
+   379→                        ) : (
+   380→                          <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">{b.status}</Badge>
+   381→                        )}
+   382→                      </td>
+   383→                    </tr>
+   384→                  ))}
+   385→                </tbody>
+   386→              </table>
+   387→            </div>
+   388→          </Card>
+   389→        </TabsContent>
+   390→
+   391→        {/* BOOKINGS TAB */}
+   392→        <TabsContent value="bookings">
+   393→          <Card>
+   394→            <div className="border-b border-border p-5">
+   395→              <h3 className="font-semibold">All Bookings</h3>
+   396→              <p className="mt-1 text-xs text-muted-foreground">Your complete booking history</p>
+   397→            </div>
+   398→            <div className="overflow-x-auto">
+   399→              <table className="w-full text-sm">
+   400→                <thead>
+   401→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   402→                    <th className="px-5 py-3 font-medium">Booking ID</th>
+   403→                    <th className="px-5 py-3 font-medium">Event</th>
+   404→                    <th className="px-5 py-3 font-medium">Date</th>
+   405→                    <th className="px-5 py-3 font-medium">Tier</th>
+   406→                    <th className="px-5 py-3 font-medium">Amount</th>
+   407→                    <th className="px-5 py-3 font-medium">Status</th>
+   408→                    <th className="px-5 py-3 text-right">Actions</th>
+   409→                  </tr>
+   410→                </thead>
+   411→                <tbody className="divide-y divide-border">
+   412→                  {[...UPCOMING_BOOKINGS, ...PAST_BOOKINGS].map((b) => (
+   413→                    <tr key={b.id} className="cursor-pointer transition-colors hover:bg-muted/30" onClick={() => navigate('booking-details', { bookingId: b.id })}>
+   414→                      <td className="px-5 py-3 font-mono text-xs">{b.id}</td>
+   415→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   416→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.eventDate)}</td>
+   417→                      <td className="px-5 py-3 text-xs">{b.tier} × {b.qty}</td>
+   418→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   419→                      <td className="px-5 py-3">
+   420→                        <Badge variant="secondary" className={
+   421→                          b.status === 'Confirmed' ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15' :
+   422→                          b.status === 'Pending' ? 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/15' :
+   423→                          'bg-rose-500/15 text-rose-700 hover:bg-rose-500/15'
+   424→                        }>{b.status}</Badge>
+   425→                      </td>
+   426→                      <td className="px-5 py-3 text-right">
+   427→                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">View</Button>
+   428→                      </td>
+   429→                    </tr>
+   430→                  ))}
+   431→                </tbody>
+   432→              </table>
+   433→            </div>
+   434→          </Card>
+   435→        </TabsContent>
+   436→
+   437→        {/* REWARDS WALLET TAB */}
+   438→        <TabsContent value="rewards" className="space-y-6">
+   439→          {/* Wallet hero */}
+   440→          <Card className="relative overflow-hidden p-0">
+   441→            <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700" />
+   442→            <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10" />
+   443→            <div className="absolute -bottom-16 -left-8 h-56 w-56 rounded-full bg-white/5" />
+   444→            <div className="relative p-6 text-white sm:p-8">
+   445→              <div className="flex items-start justify-between">
+   446→                <div>
+   447→                  <div className="text-xs uppercase tracking-wider opacity-80">Unified Rewards Wallet</div>
+   448→                  <div className="mt-2 text-4xl font-bold sm:text-5xl">
+   449→                    {rewardsBalance.toLocaleString()} <span className="text-lg font-medium opacity-80">points</span>
+   450→                  </div>
+   451→                  <div className="mt-2 text-sm opacity-90">≈ {fmt(rewardsBalance)} redeemable value · 1 pt = $1</div>
+   452→                </div>
+   453→                <div className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur">
+   454→                  <Gift className="h-6 w-6" />
+   455→                </div>
+   456→              </div>
+   457→              <div className="mt-6 grid grid-cols-3 gap-3 text-sm">
+   458→                <div className="rounded-lg bg-white/10 p-3 backdrop-blur">
+   459→                  <div className="text-xs opacity-80">Earned</div>
+   460→                  <div className="mt-0.5 font-semibold">+{rewardsHistory.filter(t => t.type === 'earn').reduce((s, t) => s + t.points, 0).toLocaleString()}</div>
+   461→                </div>
+   462→                <div className="rounded-lg bg-white/10 p-3 backdrop-blur">
+   463→                  <div className="text-xs opacity-80">Redeemed</div>
+   464→                  <div className="mt-0.5 font-semibold">{rewardsHistory.filter(t => t.type === 'redeem').reduce((s, t) => s + Math.abs(t.points), 0).toLocaleString()}</div>
+   465→                </div>
+   466→                <div className="rounded-lg bg-white/10 p-3 backdrop-blur">
+   467→                  <div className="text-xs opacity-80">Sources</div>
+   468→                  <div className="mt-0.5 font-semibold">Events + Restaurants</div>
+   469→                </div>
+   470→              </div>
+   471→              <p className="mt-4 text-xs opacity-80">
+   472→                Rewards accrue from every eligible booking across event tickets and partner restaurants — all in one unified wallet, redeemable at checkout.
+   473→              </p>
+   474→            </div>
+   475→          </Card>
+   476→
+   477→          {/* Two-column layout: history + redeem panel */}
+   478→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   479→            <Card className="lg:col-span-2">
+   480→              <div className="border-b border-border p-5">
+   481→                <h3 className="flex items-center gap-2 font-semibold">
+   482→                  <Sparkles className="h-4 w-4 text-violet-500" />
+   483→                  Rewards History
+   484→                </h3>
+   485→                <p className="mt-1 text-xs text-muted-foreground">Every transaction that earned or redeemed points</p>
+   486→              </div>
+   487→              <div className="divide-y divide-border">
+   488→                {rewardsHistory.map((tx) => (
+   489→                  <div key={tx.id} className="flex items-center gap-4 p-4">
+   490→                    <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${tx.type === 'earn' ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
+   491→                      {tx.type === 'earn'
+   492→                        ? <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
+   493→                        : <ArrowUpRight className="h-4 w-4 text-rose-600" />
+   494→                      }
+   495→                    </div>
+   496→                    <div className="flex-1 min-w-0">
+   497→                      <div className="text-sm font-medium">{tx.description}</div>
+   498→                      <div className="text-xs text-muted-foreground">
+   499→                        {new Date(tx.date).toLocaleString()} · Source {tx.source}
+   500→                      </div>
+   501→                    </div>
+   502→                    <div className="text-right">
+   503→                      <div className={`font-semibold ${tx.type === 'earn' ? 'text-emerald-600' : 'text-rose-600'}`}>
+   504→                        {tx.type === 'earn' ? '+' : '−'}{Math.abs(tx.points).toLocaleString()} pts
+   505→                      </div>
+   506→                      <div className="text-[10px] text-muted-foreground">Balance: {tx.balanceAfter.toLocaleString()}</div>
+   507→                    </div>
+   508→                  </div>
+   509→                ))}
+   510→              </div>
+   511→            </Card>
+   512→
+   513→            <Card className="p-5">
+   514→              <h3 className="font-semibold">Redeem points</h3>
+   515→              <p className="mt-1 text-xs text-muted-foreground">
+   516→                Use your points at checkout for up to 30% off any booking — events or restaurants.
+   517→              </p>
+   518→              <Separator className="my-4" />
+   519→              <div className="space-y-3 text-sm">
+   520→                <div className="flex items-center justify-between">
+   521→                  <span className="text-muted-foreground">Available</span>
+   522→                  <span className="font-semibold">{rewardsBalance.toLocaleString()} pts</span>
+   523→                </div>
+   524→                <div className="flex items-center justify-between">
+   525→                  <span className="text-muted-foreground">Cash value</span>
+   526→                  <span className="font-semibold">{fmt(rewardsBalance)}</span>
+   527→                </div>
+   528→                <div className="flex items-center justify-between">
+   529→                  <span className="text-muted-foreground">Conversion rate</span>
+   530→                  <span className="font-semibold">1 pt = {fmt(1)}</span>
+   531→                </div>
+   532→              </div>
+   533→              <Button
+   534→                className="mt-4 w-full gap-2"
+   535→                onClick={() => {
+   536→                  if (rewardsBalance < 100) {
+   537→                    addToast({ title: 'Need at least 100 points', type: 'error' })
+   538→                    return
+   539→                  }
+   540→                  const ok = redeemRewardPoints(100, 'Manual redemption', 'Redeemed 100 points from wallet')
+   541→                  if (ok) addToast({ title: '100 points redeemed', description: 'Applied as $100 statement credit', type: 'success' })
+   542→                }}
+   543→              >
+   544→                Redeem 100 points
+   545→                <ArrowRight className="h-4 w-4" />
+   546→              </Button>
+   547→              <Button variant="outline" className="mt-2 w-full" onClick={() => navigate('events')}>
+   548→                Browse events
+   549→              </Button>
+   550→            </Card>
+   551→          </div>
+   552→        </TabsContent>
+   553→
+   554→        {/* MEMBERSHIP CARDS TAB */}
+   555→        <TabsContent value="cards" className="space-y-6">
+   556→          <div className="flex items-center justify-between">
+   557→            <div>
+   558→              <h2 className="text-xl font-bold tracking-tight">My Membership Cards</h2>
+   559→              <p className="mt-1 text-sm text-muted-foreground">
+   560→                Configurable cards redeemable across event tickets, restaurants, hospitality, and more.
+   561→              </p>
+   562→            </div>
+   563→            <Button variant="outline" className="gap-2" onClick={() => setGrantOpen(true)}>
+   564→              <Plus className="h-4 w-4" />
+   565→              Add Card
+   566→            </Button>
+   567→          </div>
+   568→
+   569→          {/* Owned cards */}
+   570→          {ownedCards.length === 0 ? (
+   571→            <Card className="grid place-items-center py-12 text-center">
+   572→              <CreditCard className="h-10 w-10 text-muted-foreground/50" />
+   573→              <p className="mt-2 text-sm text-muted-foreground">No membership cards in your wallet yet.</p>
+   574→              <Button className="mt-3" onClick={() => setGrantOpen(true)}>Add a card</Button>
+   575→            </Card>
+   576→          ) : (
+   577→            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+   578→              {ownedCards.map((card) => (
+   579→                <motion.div
+   580→                  key={card.id}
+   581→                  initial={{ opacity: 0, y: 10 }}
+   582→                  animate={{ opacity: 1, y: 0 }}
+   583→                  className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${card.color} p-6 text-white shadow-lg`}
+   584→                >
+   585→                  <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10" />
+   586→                  <div className="absolute -bottom-16 -left-4 h-32 w-32 rounded-full bg-white/5" />
+   587→                  <div className="relative">
+   588→                    <div className="flex items-start justify-between">
+   589→                      <div>
+   590→                        <div className="text-[10px] uppercase tracking-[0.2em] opacity-70">{card.code}</div>
+   591→                        <div className="mt-1 text-xl font-bold">{card.name}</div>
+   592→                      </div>
+   593→                      <CreditCard className="h-6 w-6 opacity-60" />
+   594→                    </div>
+   595→                    <div className="mt-6 flex items-end justify-between">
+   596→                      <div>
+   597→                        <div className="text-3xl font-bold">{card.discountPct}%<span className="text-base font-medium opacity-80"> OFF</span></div>
+   598→                        <div className="mt-1 text-xs opacity-80">Max discount: {fmt(card.maxDiscount ?? 0)}</div>
+   599→                      </div>
+   600→                      <div className="text-right text-[10px] opacity-70">
+   601→                        <div>Valid until</div>
+   602→                        <div className="text-xs font-medium">{card.endDate}</div>
+   603→                      </div>
+   604→                    </div>
+   605→                    <div className="mt-4 flex flex-wrap gap-1.5">
+   606→                      {card.validFor.map(v => (
+   607→                        <span key={v} className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium uppercase">
+   608→                          {v === 'events' ? '🎫 Events' : v === 'restaurants' ? '🍽 Dining' : v === 'hospitality' ? '🥂 Hospitality' : v}
+   609→                        </span>
+   610→                      ))}
+   611→                    </div>
+   612→                    <div className="mt-4 rounded-md bg-white/10 p-2 text-[11px] opacity-90">
+   613→                      {card.description}
+   614→                    </div>
+   615→                  </div>
+   616→                </motion.div>
+   617→              ))}
+   618→            </div>
+   619→          )}
+   620→
+   621→          {/* All available cards */}
+   622→          <Card className="p-5">
+   623→            <h3 className="mb-1 font-semibold">All Available Membership Cards</h3>
+   624→            <p className="text-xs text-muted-foreground">Configured by the admin. Add one to your wallet to start redeeming.</p>
+   625→            <div className="mt-4 overflow-x-auto">
+   626→              <table className="w-full text-sm">
+   627→                <thead>
+   628→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   629→                    <th className="py-2 font-medium">Card</th>
+   630→                    <th className="py-2 font-medium">Discount</th>
+   631→                    <th className="py-2 font-medium">Valid For</th>
+   632→                    <th className="py-2 font-medium">Min Spend</th>
+   633→                    <th className="py-2 font-medium">Status</th>
+   634→                    <th className="py-2 text-right font-medium">Action</th>
+   635→                  </tr>
+   636→                </thead>
+   637→                <tbody className="divide-y divide-border">
+   638→                  {membershipCards.map((card) => {
+   639→                    const owned = ownedCardCodes.includes(card.code)
+   640→                    return (
+   641→                      <tr key={card.id} className="transition-colors hover:bg-muted/30">
+   642→                        <td className="py-3">
+   643→                          <div className="font-medium">{card.name}</div>
+   644→                          <div className="text-xs text-muted-foreground font-mono">{card.code}</div>
+   645→                        </td>
+   646→                        <td className="py-3 font-semibold">{card.discountPct}%</td>
+   647→                        <td className="py-3">
+   648→                          <div className="flex flex-wrap gap-1">
+   649→                            {card.validFor.map(v => (
+   650→                              <Badge key={v} variant="secondary" className="bg-foreground/5 text-[10px]">{v}</Badge>
+   651→                            ))}
+   652→                          </div>
+   653→                        </td>
+   654→                        <td className="py-3 text-xs">{fmt(card.minSpend ?? 0)}</td>
+   655→                        <td className="py-3">
+   656→                          <Badge variant="secondary" className={
+   657→                            card.status === 'Active' ? 'bg-emerald-500/15 text-emerald-700' :
+   658→                            card.status === 'Paused' ? 'bg-amber-500/15 text-amber-700' :
+   659→                            'bg-rose-500/15 text-rose-700'
+   660→                          }>{card.status}</Badge>
+   661→                        </td>
+   662→                        <td className="py-3 text-right">
+   663→                          {owned ? (
+   664→                            <Badge variant="secondary" className="bg-violet-500/15 text-violet-700">In Wallet</Badge>
+   665→                          ) : (
+   666→                            <Button
+   667→                              size="sm"
+   668→                              variant="outline"
+   669→                              disabled={card.status !== 'Active'}
+   670→                              onClick={() => grantMembershipCard(card.code)}
+   671→                            >
+   672→                              Add
+   673→                            </Button>
+   674→                          )}
+   675→                        </td>
+   676→                      </tr>
+   677→                    )
+   678→                  })}
+   679→                </tbody>
+   680→              </table>
+   681→            </div>
+   682→          </Card>
+   683→        </TabsContent>
+   684→
+   685→        {/* RESTAURANTS TAB */}
+   686→        <TabsContent value="restaurants" className="space-y-6">
+   687→          <div>
+   688→            <h2 className="text-xl font-bold tracking-tight">Partner Restaurants</h2>
+   689→            <p className="mt-1 text-sm text-muted-foreground">
+   690→              Book a table at our partner restaurants. Use your membership cards for discounts and earn 1 point per $1 spent.
+   691→            </p>
+   692→          </div>
+   693→
+   694→          {/* My restaurant bookings */}
+   695→          {restaurantBookings.length > 0 && (
+   696→            <Card>
+   697→              <div className="border-b border-border p-5">
+   698→                <h3 className="flex items-center gap-2 font-semibold">
+   699→                  <Utensils className="h-4 w-4" />
+   700→                  My Restaurant Bookings
+   701→                </h3>
+   702→              </div>
+   703→              <div className="divide-y divide-border">
+   704→                {restaurantBookings.map((b) => (
+   705→                  <div key={b.id} className="flex items-center gap-4 p-4">
+   706→                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-500/15">
+   707→                      <Utensils className="h-5 w-5 text-amber-600" />
+   708→                    </div>
+   709→                    <div className="flex-1">
+   710→                      <div className="font-medium">{b.restaurantName}</div>
+   711→                      <div className="text-xs text-muted-foreground">
+   712→                        {formatDate(b.date)} · {b.pax} guests · {b.id}
+   713→                        {b.cardApplied && <span className="ml-1">· Card: {b.cardApplied}</span>}
+   714→                      </div>
+   715→                    </div>
+   716→                    <div className="text-right">
+   717→                      <div className="font-semibold">{fmt(b.amount, b.currency)}</div>
+   718→                      <Badge variant="secondary" className={
+   719→                        b.status === 'Confirmed' ? 'bg-emerald-500/15 text-emerald-700' :
+   720→                        'bg-rose-500/15 text-rose-700'
+   721→                      }>{b.status}</Badge>
+   722→                    </div>
+   723→                    {b.status === 'Confirmed' && (
+   724→                      <Button variant="ghost" size="sm" onClick={() => cancelRestaurantBooking(b.id)}>
+   725→                        Cancel
+   726→                      </Button>
+   727→                    )}
+   728→                  </div>
+   729→                ))}
+   730→              </div>
+   731→            </Card>
+   732→          )}
+   733→
+   734→          {/* Available restaurants */}
+   735→          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   736→            {restaurants.map((r) => (
+   737→              <Card key={r.id} className="group overflow-hidden p-0">
+   738→                <div className="relative aspect-[4/3] overflow-hidden">
+   739→                  <img src={r.image} alt={r.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+   740→                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+   741→                  <div className="absolute left-3 top-3 flex gap-1.5">
+   742→                    {r.acceptedCards.slice(0, 2).map(c => (
+   743→                      <Badge key={c} className="bg-white/90 text-foreground text-[10px]">{c}</Badge>
+   744→                    ))}
+   745→                  </div>
+   746→                  <div className="absolute right-3 top-3">
+   747→                    <Badge className={
+   748→                      r.availability === 'Available' ? 'bg-emerald-500 text-white' :
+   749→                      r.availability === 'Limited' ? 'bg-amber-500 text-white' :
+   750→                      'bg-rose-500 text-white'
+   751→                    }>{r.availability}</Badge>
+   752→                  </div>
+   753→                  <div className="absolute bottom-3 left-3 right-3 text-white">
+   754→                    <div className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />{r.city}, {r.country}</div>
+   755→                    <div className="mt-1 text-lg font-semibold">{r.name}</div>
+   756→                    <div className="text-xs opacity-90">{r.cuisine} · ★ {r.rating}</div>
+   757→                  </div>
+   758→                </div>
+   759→                <div className="p-4 flex items-center justify-between">
+   760→                  <div>
+   761→                    <div className="text-[10px] uppercase text-muted-foreground">From (for 2)</div>
+   762→                    <div className="text-lg font-semibold">{fmt(r.priceForTwo, r.currency)}</div>
+   763→                  </div>
+   764→                  <Button
+   765→                    size="sm"
+   766→                    disabled={r.availability === 'Waitlist'}
+   767→                    onClick={() => {
+   768→                      setSelectedRestaurant(r)
+   769→                      setBookingForm({ date: '', pax: 2, time: '19:30', cardCode: '' })
+   770→                    }}
+   771→                  >
+   772→                    Book table
+   773→                  </Button>
+   774→                </div>
+   775→              </Card>
+   776→            ))}
+   777→          </div>
+   778→        </TabsContent>
+   779→
+   780→        {/* WISHLIST TAB */}
+   781→        <TabsContent value="wishlist">
+   782→          {wishlistEvents.length === 0 ? (
+   783→            <Card className="grid place-items-center py-16 text-center">
+   784→              <Heart className="h-10 w-10 text-muted-foreground/50" />
+   785→              <p className="mt-3 text-sm text-muted-foreground">Your wishlist is empty.</p>
+   786→              <Button className="mt-3 gap-2" onClick={() => navigate('events')}>
+   787→                <ShoppingBag className="h-4 w-4" />
+   788→                Browse events
+   789→              </Button>
+   790→            </Card>
+   791→          ) : (
+   792→            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+   793→              {wishlistEvents.map((event) => (
+   794→                <Card key={event.id} className="group overflow-hidden p-0">
+   795→                  <div className="relative aspect-[4/3] cursor-pointer overflow-hidden" onClick={() => navigate('event-detail', { eventId: event.id })}>
+   796→                    <img src={event.image} alt={event.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+   797→                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   798→                    <button
+   799→                      onClick={(e) => { e.stopPropagation(); toggleWishlist(event.id); addToast({ title: 'Removed from wishlist' }) }}
+   800→                      className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-background/90 backdrop-blur"
+   801→                    >
+   802→                      <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
+   803→                    </button>
+   804→                    <div className="absolute bottom-3 left-3 right-3 text-white">
+   805→                      <Badge className="bg-accent text-accent-foreground hover:bg-accent">{event.category}</Badge>
+   806→                      <div className="mt-1 text-sm font-semibold line-clamp-1">{event.name}</div>
+   807→                      <div className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />{event.city}</div>
+   808→                    </div>
+   809→                  </div>
+   810→                  <div className="p-4 flex items-center justify-between">
+   811→                    <div>
+   812→                      <div className="text-[10px] uppercase text-muted-foreground">From</div>
+   813→                      <div className="text-lg font-semibold">{formatCurrency(event.startingPrice, event.currency)}</div>
+   814→                    </div>
+   815→                    <Button size="sm" onClick={() => navigate('event-detail', { eventId: event.id })}>Book now</Button>
+   816→                  </div>
+   817→                </Card>
+   818→              ))}
+   819→            </div>
+   820→          )}
+   821→        </TabsContent>
+   822→
+   823→        {/* INVOICES TAB */}
+   824→        <TabsContent value="invoices">
+   825→          <Card>
+   826→            <div className="border-b border-border p-5">
+   827→              <h3 className="font-semibold">Invoices & Receipts</h3>
+   828→              <p className="mt-1 text-xs text-muted-foreground">Download invoices for your bookings</p>
+   829→            </div>
+   830→            <div className="overflow-x-auto">
+   831→              <table className="w-full text-sm">
+   832→                <thead>
+   833→                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+   834→                    <th className="px-5 py-3 font-medium">Invoice #</th>
+   835→                    <th className="px-5 py-3 font-medium">Booking</th>
+   836→                    <th className="px-5 py-3 font-medium">Date</th>
+   837→                    <th className="px-5 py-3 font-medium">Amount</th>
+   838→                    <th className="px-5 py-3 font-medium">Payment</th>
+   839→                    <th className="px-5 py-3 text-right">Actions</th>
+   840→                  </tr>
+   841→                </thead>
+   842→                <tbody className="divide-y divide-border">
+   843→                  {[...UPCOMING_BOOKINGS, ...PAST_BOOKINGS].map((b, i) => (
+   844→                    <tr key={b.id} className="transition-colors hover:bg-muted/30">
+   845→                      <td className="px-5 py-3 font-mono text-xs">INV-2026-{1000 + i}</td>
+   846→                      <td className="px-5 py-3 font-medium">{b.eventName}</td>
+   847→                      <td className="px-5 py-3 text-muted-foreground">{formatDate(b.bookingDate)}</td>
+   848→                      <td className="px-5 py-3 font-semibold">{formatCurrency(b.amount, b.currency)}</td>
+   849→                      <td className="px-5 py-3 text-xs">{b.paymentMethod}</td>
+   850→                      <td className="px-5 py-3 text-right">
+   851→                        <Button size="sm" variant="ghost" className="gap-1.5 h-7" onClick={() => addToast({ title: 'Invoice downloaded', description: `INV-2026-${1000 + i}.pdf` })}>
+   852→                          <Download className="h-3.5 w-3.5" />
+   853→                          PDF
+   854→                        </Button>
+   855→                      </td>
+   856→                    </tr>
+   857→                  ))}
+   858→                </tbody>
+   859→              </table>
+   860→            </div>
+   861→          </Card>
+   862→        </TabsContent>
+   863→
+   864→        {/* SUPPORT TAB */}
+   865→        <TabsContent value="support">
+   866→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   867→            <Card className="lg:col-span-2 p-6">
+   868→              <h3 className="flex items-center gap-2 font-semibold"><MessageSquare className="h-4 w-4" /> Submit a support request</h3>
+   869→              <p className="mt-1 text-xs text-muted-foreground">Our team typically responds within 4 hours during business days.</p>
+   870→              <Separator className="my-4" />
+   871→              <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); addToast({ title: 'Request submitted', description: 'Our team will be in touch shortly', type: 'success' }); (e.target as HTMLFormElement).reset() }}>
+   872→                <div>
+   873→                  <Label className="text-xs">Subject *</Label>
+   874→                  <Input required placeholder="Brief description of your issue" className="mt-1" />
+   875→                </div>
+   876→                <div>
+   877→                  <Label className="text-xs">Category</Label>
+   878→                  <select className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+   879→                    <option>Booking issue</option>
+   880→                    <option>Payment / Refund</option>
+   881→                    <option>Ticket delivery</option>
+   882→                    <option>Hospitality</option>
+   883→                    <option>Account / Login</option>
+   884→                    <option>Other</option>
+   885→                  </select>
+   886→                </div>
+   887→                <div>
+   888→                  <Label className="text-xs">Message *</Label>
+   889→                  <textarea required rows={5} placeholder="Tell us more about your issue…" className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+   890→                </div>
+   891→                <Button type="submit" className="gap-2">Submit request <ArrowRight className="h-4 w-4" /></Button>
+   892→              </form>
+   893→            </Card>
+   894→
+   895→            <div className="space-y-4">
+   896→              <Card className="p-5">
+   897→                <h3 className="mb-3 flex items-center gap-2 font-semibold"><LifeBuoy className="h-4 w-4" />Quick Help</h3>
+   898→                <div className="space-y-2">
+   899→                  {[
+   900→                    'How will I receive my tickets?',
+   901→                    'What is the cancellation policy?',
+   902→                    'Can I transfer my ticket?',
+   903→                    'How do I update my payment method?',
+   904→                    'How do loyalty points work?',
+   905→                  ].map(q => (
+   906→                    <button key={q} className="block w-full text-left text-xs text-muted-foreground hover:text-foreground hover:underline">
+   907→                      {q}
+   908→                    </button>
+   909→                  ))}
+   910→                </div>
+   911→              </Card>
+   912→
+   913→              <Card className="p-5">
+   914→                <h3 className="mb-2 font-semibold">Contact Concierge</h3>
+   915→                <p className="text-xs text-muted-foreground">Available 24/7 for {user.membership} members</p>
+   916→                <div className="mt-3 space-y-2 text-sm">
+   917→                  <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" />concierge@dstickets.com</div>
+   918→                  <div className="flex items-center gap-2"><Globe className="h-3.5 w-3.5 text-muted-foreground" />+44 20 7946 0958</div>
+   919→                </div>
+   920→              </Card>
+   921→            </div>
+   922→          </div>
+   923→        </TabsContent>
+   924→
+   925→        {/* PROFILE TAB */}
+   926→        <TabsContent value="profile">
+   927→          <Card className="p-6">
+   928→            <div className="flex items-center justify-between">
+   929→              <h3 className="text-lg font-semibold">My Profile</h3>
+   930→              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setProfileOpen(true)}>
+   931→                <Save className="h-3.5 w-3.5" /> Edit
+   932→              </Button>
+   933→            </div>
+   934→            <Separator className="my-4" />
+   935→            <div className="flex flex-col gap-6 sm:flex-row">
+   936→              <div className="flex flex-col items-center gap-2">
+   937→                <Avatar className="h-24 w-24">
+   938→                  <AvatarImage src={user.avatar} />
+   939→                  <AvatarFallback className="text-2xl">{user.name.split(' ').map(s => s[0]).join('').slice(0, 2)}</AvatarFallback>
+   940→                </Avatar>
+   941→                <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">
+   942→                  <Star className="mr-1 h-3 w-3" />
+   943→                  {user.membership || 'Gold'}
+   944→                </Badge>
+   945→              </div>
+   946→              <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+   947→                <div>
+   948→                  <div className="text-xs text-muted-foreground">Full Name</div>
+   949→                  <div className="mt-1 font-medium">{profile.name}</div>
+   950→                </div>
+   951→                <div>
+   952→                  <div className="text-xs text-muted-foreground">Email</div>
+   953→                  <div className="mt-1 font-medium">{profile.email}</div>
+   954→                </div>
+   955→                <div>
+   956→                  <div className="text-xs text-muted-foreground">Phone</div>
+   957→                  <div className="mt-1 font-medium">{profile.phone}</div>
+   958→                </div>
+   959→                <div>
+   960→                  <div className="text-xs text-muted-foreground">Country</div>
+   961→                  <div className="mt-1 font-medium">{profile.country}</div>
+   962→                </div>
+   963→                <div>
+   964→                  <div className="text-xs text-muted-foreground">City</div>
+   965→                  <div className="mt-1 font-medium">{profile.city}</div>
+   966→                </div>
+   967→                <div className="sm:col-span-2">
+   968→                  <div className="text-xs text-muted-foreground">Address</div>
+   969→                  <div className="mt-1 font-medium">{profile.address}</div>
+   970→                </div>
+   971→              </div>
+   972→            </div>
+   973→
+   974→            <Separator className="my-6" />
+   975→
+   976→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+   977→              <div className="rounded-lg border border-border p-4 text-center">
+   978→                <div className="text-2xl font-bold">14</div>
+   979→                <div className="text-xs text-muted-foreground">Total Bookings</div>
+   980→              </div>
+   981→              <div className="rounded-lg border border-border p-4 text-center">
+   982→                <div className="text-2xl font-bold">{formatCurrency(18650)}</div>
+   983→                <div className="text-xs text-muted-foreground">Lifetime Spend</div>
+   984→              </div>
+   985→              <div className="rounded-lg border border-border p-4 text-center">
+   986→                <div className="text-2xl font-bold">1,842</div>
+   987→                <div className="text-xs text-muted-foreground">Loyalty Points</div>
+   988→              </div>
+   989→            </div>
+   990→          </Card>
+   991→        </TabsContent>
+   992→      </Tabs>
+   993→
+   994→      {/* Edit profile dialog */}
+   995→      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+   996→        <DialogContent>
+   997→          <DialogHeader>
+   998→            <DialogTitle>Edit Profile</DialogTitle>
+   999→            <DialogDescription>Update your personal information</DialogDescription>
+  1000→          </DialogHeader>
+  1001→          <form onSubmit={saveProfile} className="space-y-3">
+  1002→            <div>
+  1003→              <Label className="text-xs">Full Name</Label>
+  1004→              <Input value={profile.name} onChange={(e) => setProfile(p => ({ ...p, name: e.target.value }))} className="mt-1" required />
+  1005→            </div>
+  1006→            <div>
+  1007→              <Label className="text-xs">Email</Label>
+  1008→              <Input type="email" value={profile.email} onChange={(e) => setProfile(p => ({ ...p, email: e.target.value }))} className="mt-1" required />
+  1009→            </div>
+  1010→            <div>
+  1011→              <Label className="text-xs">Phone</Label>
+  1012→              <Input value={profile.phone} onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))} className="mt-1" />
+  1013→            </div>
+  1014→            <div className="grid grid-cols-2 gap-3">
+  1015→              <div>
+  1016→                <Label className="text-xs">Country</Label>
+  1017→                <Input value={profile.country} onChange={(e) => setProfile(p => ({ ...p, country: e.target.value }))} className="mt-1" />
+  1018→              </div>
+  1019→              <div>
+  1020→                <Label className="text-xs">City</Label>
+  1021→                <Input value={profile.city} onChange={(e) => setProfile(p => ({ ...p, city: e.target.value }))} className="mt-1" />
+  1022→              </div>
+  1023→            </div>
+  1024→            <div>
+  1025→              <Label className="text-xs">Address</Label>
+  1026→              <Input value={profile.address} onChange={(e) => setProfile(p => ({ ...p, address: e.target.value }))} className="mt-1" />
+  1027→            </div>
+  1028→            <DialogFooter>
+  1029→              <Button type="button" variant="outline" onClick={() => setProfileOpen(false)}>Cancel</Button>
+  1030→              <Button type="submit" className="gap-2"><Save className="h-4 w-4" /> Save changes</Button>
+  1031→            </DialogFooter>
+  1032→          </form>
+  1033→        </DialogContent>
+  1034→      </Dialog>
+  1035→
+  1036→      {/* Grant Membership Card dialog */}
+  1037→      <Dialog open={grantOpen} onOpenChange={setGrantOpen}>
+  1038→        <DialogContent>
+  1039→          <DialogHeader>
+  1040→            <DialogTitle>Add Membership Card</DialogTitle>
+  1041→            <DialogDescription>Enter the card code issued to you. Try GOLD10, PLATINUM15, or DINE20.</DialogDescription>
+  1042→          </DialogHeader>
+  1043→          <form onSubmit={handleGrant} className="space-y-3">
+  1044→            <div>
+  1045→              <Label className="text-xs">Card Code</Label>
+  1046→              <Input
+  1047→                value={grantCode}
+  1048→                onChange={(e) => setGrantCode(e.target.value)}
+  1049→                placeholder="e.g. GOLD10"
+  1050→                className="mt-1 uppercase"
+  1051→                required
+  1052→              />
+  1053→            </div>
+  1054→            <DialogFooter>
+  1055→              <Button type="button" variant="outline" onClick={() => setGrantOpen(false)}>Cancel</Button>
+  1056→              <Button type="submit">Add to wallet</Button>
+  1057→            </DialogFooter>
+  1058→          </form>
+  1059→        </DialogContent>
+  1060→      </Dialog>
+  1061→
+  1062→      {/* Restaurant booking dialog */}
+  1063→      <Dialog open={!!selectedRestaurant} onOpenChange={(o) => !o && setSelectedRestaurant(null)}>
+  1064→        <DialogContent>
+  1065→          <DialogHeader>
+  1066→            <DialogTitle>Book a Table — {selectedRestaurant?.name}</DialogTitle>
+  1067→            <DialogDescription>
+  1068→              {selectedRestaurant?.cuisine} · {selectedRestaurant?.city} · ★ {selectedRestaurant?.rating}
+  1069→            </DialogDescription>
+  1070→          </DialogHeader>
+  1071→          <form onSubmit={handleRestaurantBooking} className="space-y-3">
+  1072→            <div className="grid grid-cols-2 gap-3">
+  1073→              <div>
+  1074→                <Label className="text-xs">Date</Label>
+  1075→                <Input
+  1076→                  type="date"
+  1077→                  value={bookingForm.date}
+  1078→                  onChange={(e) => setBookingForm(p => ({ ...p, date: e.target.value }))}
+  1079→                  className="mt-1"
+  1080→                  required
+  1081→                />
+  1082→              </div>
+  1083→              <div>
+  1084→                <Label className="text-xs">Time</Label>
+  1085→                <Input
+  1086→                  type="time"
+  1087→                  value={bookingForm.time}
+  1088→                  onChange={(e) => setBookingForm(p => ({ ...p, time: e.target.value }))}
+  1089→                  className="mt-1"
+  1090→                  required
+  1091→                />
+  1092→              </div>
+  1093→            </div>
+  1094→            <div>
+  1095→              <Label className="text-xs">Number of guests</Label>
+  1096→              <Input
+  1097→                type="number"
+  1098→                min={1}
+  1099→                max={12}
+  1100→                value={bookingForm.pax}
+  1101→                onChange={(e) => setBookingForm(p => ({ ...p, pax: parseInt(e.target.value) || 1 }))}
+  1102→                className="mt-1"
+  1103→                required
+  1104→              />
+  1105→            </div>
+  1106→            <div>
+  1107→              <Label className="text-xs">Apply Membership Card (optional)</Label>
+  1108→              <select
+  1109→                value={bookingForm.cardCode}
+  1110→                onChange={(e) => setBookingForm(p => ({ ...p, cardCode: e.target.value }))}
+  1111→                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+  1112→              >
+  1113→                <option value="">No card applied</option>
+  1114→                {ownedCards.filter(c => c.validFor.includes('restaurants')).map(card => (
+  1115→                  <option key={card.code} value={card.code}>
+  1116→                    {card.name} — {card.discountPct}% off
+  1117→                  </option>
+  1118→                ))}
+  1119→              </select>
+  1120→              {bookingForm.cardCode && selectedRestaurant && (() => {
+  1121→                const card = membershipCards.find(c => c.code === bookingForm.cardCode)!
+  1122→                const base = selectedRestaurant.priceForTwo * Math.ceil(bookingForm.pax / 2)
+  1123→                const discount = Math.min(Math.round(base * card.discountPct / 100), card.maxDiscount ?? Infinity)
+  1124→                return (
+  1125→                  <div className="mt-2 rounded-lg bg-emerald-500/10 p-2 text-xs text-emerald-700">
+  1126→                    You save {fmt(discount)} with {card.name}
+  1127→                  </div>
+  1128→                )
+  1129→              })()}
+  1130→            </div>
+  1131→            <DialogFooter>
+  1132→              <Button type="button" variant="outline" onClick={() => setSelectedRestaurant(null)}>Cancel</Button>
+  1133→              <Button type="submit" className="gap-2">
+  1134→                Confirm booking
+  1135→                <ArrowRight className="h-4 w-4" />
+  1136→              </Button>
+  1137→            </DialogFooter>
+  1138→          </form>
+  1139→        </DialogContent>
+  1140→      </Dialog>
+  1141→    </DashboardShell>
+  1142→  )
+  1143→}
+  1144→
