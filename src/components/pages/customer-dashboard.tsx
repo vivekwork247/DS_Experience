@@ -222,7 +222,7 @@ export function CustomerDashboardPage() {
             {[
               { label: 'Upcoming Bookings', value: '3', icon: Calendar, accent: 'text-emerald-600', change: '+1 this month' },
               { label: 'Past Bookings', value: '14', icon: Ticket, accent: 'text-muted-foreground', change: '+2 last quarter' },
-              { label: 'Total Spent', value: fmt(18650), icon: CreditCard, accent: 'text-muted-foreground', change: 'Lifetime value' },
+              { label: 'Membership Status', value: user.membership || 'Gold', icon: Star, accent: 'text-amber-600', change: '158 pts to Platinum' },
               { label: 'Rewards Balance', value: `${rewardsBalance.toLocaleString()} pts`, icon: Gift, accent: 'text-violet-600', change: `≈ ${fmt(rewardsBalance)} value` },
             ].map((stat) => {
               const Icon = stat.icon
@@ -979,8 +979,11 @@ export function CustomerDashboardPage() {
                 <div className="text-xs text-muted-foreground">Total Bookings</div>
               </div>
               <div className="rounded-lg border border-border p-4 text-center">
-                <div className="text-2xl font-bold">{formatCurrency(18650)}</div>
-                <div className="text-xs text-muted-foreground">Lifetime Spend</div>
+                <div className="flex items-center justify-center gap-1.5 text-2xl font-bold">
+                  <Star className="h-5 w-5 fill-amber-400 text-amber-500" />
+                  {user.membership || 'Gold'}
+                </div>
+                <div className="text-xs text-muted-foreground">Membership Status</div>
               </div>
               <div className="rounded-lg border border-border p-4 text-center">
                 <div className="text-2xl font-bold">1,842</div>

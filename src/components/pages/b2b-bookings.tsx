@@ -159,7 +159,6 @@ export function B2BBookingsPage() {
                 <div><div className="text-xs text-muted-foreground">Email</div><div className="font-medium">{selectedBooking.email}</div></div>
                 <div><div className="text-xs text-muted-foreground">Payment</div><div className="font-medium">{selectedBooking.paymentMethod}</div></div>
                 <div><div className="text-xs text-muted-foreground">Tier</div><div className="font-medium">{selectedBooking.tier} × {selectedBooking.qty}</div></div>
-                <div><div className="text-xs text-muted-foreground">Supplier</div><div className="font-medium">{selectedBooking.supplier}</div></div>
                 <div><div className="text-xs text-muted-foreground">Amount</div><div className="font-semibold">{formatCurrency(selectedBooking.amount, selectedBooking.currency)}</div></div>
                 <div><div className="text-xs text-muted-foreground">Commission</div><div className="font-semibold text-emerald-700">{formatCurrency(selectedBooking.commission, selectedBooking.currency)}</div></div>
               </div>

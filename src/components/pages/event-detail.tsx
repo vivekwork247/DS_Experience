@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VenueSeatingSelector, SelectedBooking } from '@/components/venue-seating-selector'
 import { ImageGallery, ImageWithFallback } from '@/components/image-gallery'
-import { EVENTS, TICKET_TIERS, FAQS, formatCurrency, formatDate, supplierForEvent } from '@/lib/mock-data'
+import { EVENTS, TICKET_TIERS, FAQS, formatCurrency, formatDate } from '@/lib/mock-data'
 import { useCurrencyFormatter } from '@/components/currency-switcher'
 import {
   MapPin, Calendar, Clock, Users, ShieldCheck, Truck, Ban, CheckCircle2,
@@ -36,7 +36,6 @@ export function EventDetailPage() {
   const eventId = (route.params?.eventId as string) || EVENTS[0].id
   const event = EVENTS.find(e => e.id === eventId) || EVENTS[0]
   const tiers = TICKET_TIERS[event.id] || TICKET_TIERS.default
-  const supplier = supplierForEvent(event)
   const relatedEvents = EVENTS.filter(e => e.id !== event.id && e.category === event.category).slice(0, 3)
   const gallery = event.gallery || [event.image, event.image, event.image, event.image]
 
@@ -132,32 +131,67 @@ export function EventDetailPage() {
       <PublicHeader />
 
       <div className="flex-1">
-        {/* Breadcrumb */}
-        <div className="border-b border-border bg-muted/30">
-          <div className="container mx-auto px-4 py-3 sm:px-6 lg:px-8">
+        {/* Cinematic hero strip with breadcrumb */}
+        <section className="relative overflow-hidden border-b border-border bg-foreground">
+          <div className="absolute inset-0">
+            <img
+              src={event.image}
+              alt=""
+              aria-hidden
+              className="h-full w-full object-cover opacity-30"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-foreground/70 via-foreground/80 to-foreground" />
+            <div className="absolute inset-0 bg-gradient-to-r from-foreground via-transparent to-foreground" />
+          </div>
+          {/* Ambient orb */}
+          <div className="orb-ambient-1 pointer-events-none absolute -right-20 top-0 h-64 w-64 rounded-full bg-amber-500/20 blur-[100px]" />
+
+          <div className="container relative mx-auto px-4 py-5 sm:px-6 lg:px-8">
             <Breadcrumb>
-              <BreadcrumbList>
+              <BreadcrumbList className="text-background/80">
                 <BreadcrumbItem>
-                  <BreadcrumbLink onClick={() => navigate('home')} className="cursor-pointer">Home</BreadcrumbLink>
+                  <BreadcrumbLink onClick={() => navigate('home')} className="cursor-pointer hover:text-accent">Home</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink onClick={() => navigate('events')} className="cursor-pointer">Events</BreadcrumbLink>
+                  <BreadcrumbLink onClick={() => navigate('events')} className="cursor-pointer hover:text-accent">Events</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink onClick={() => navigate('events', { category: event.category })} className="cursor-pointer">
+                  <BreadcrumbLink onClick={() => navigate('events', { category: event.category })} className="cursor-pointer hover:text-accent">
                     {event.category}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{event.name}</BreadcrumbPage>
+                  <BreadcrumbPage className="text-background">{event.name}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
+
+            {/* Event title overlay */}
+            <div className="py-8 sm:py-12">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="max-w-4xl"
+              >
+                <Badge className="mb-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-500 hover:to-orange-500">
+                  {event.category}
+                </Badge>
+                <h1 className="text-3xl font-bold tracking-tight text-background sm:text-4xl lg:text-5xl">
+                  {event.name}
+                </h1>
+                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-background/70">
+                  <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-accent" />{event.venue}, {event.city}</span>
+                  <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-accent" />{formatDate(event.date)}</span>
+                  <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-accent" />{event.time}</span>
+                </div>
+              </motion.div>
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Image Gallery */}
         <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
@@ -225,26 +259,6 @@ export function EventDetailPage() {
                       <div className="font-medium">{event.ticketsAvailable} tickets available</div>
                       <div className="text-xs text-muted-foreground">Across {tiers.length} tiers</div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Supplier / Smart Routing indicator */}
-                <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-6 w-6 place-items-center rounded-md bg-foreground text-background text-[10px] font-bold">
-                      {supplier.id.replace('SUP-', '')}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fulfilled by</div>
-                      <div className="truncate text-xs font-medium">{supplier.name}</div>
-                    </div>
-                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 text-[10px]">
-                      {supplier.primaryCategoryLabel}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Truck className="h-3 w-3" />
-                    Smart-routed via category mapping
                   </div>
                 </div>
 
