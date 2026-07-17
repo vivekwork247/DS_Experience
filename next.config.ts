@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  /* config options here */
+  // Use standalone output for self-hosted (bun) deployments only.
+  // Vercel sets process.env.VERCEL='1', so standalone is skipped there.
+  output: process.env.VERCEL ? undefined : "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
