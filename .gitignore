@@ -9,3 +9,4 @@ yarn-error.log*
 *.tsbuildinfo
 dev.log
 server.log
+db/*.db
